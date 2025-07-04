@@ -254,8 +254,11 @@
             });
             const data = await response.json();
             if (response.ok) {
-                showSuccess(data.message || "Your email has been verified! You can now <a href='login.html'>sign in</a>.");
+                showSuccess(data.message || "Your email has been verified! Redirecting to login...");
                 document.getElementById('verification-form').style.display = "none";
+                setTimeout(function() {
+                    window.location.href = "login.html";
+                }, 2000);
             } else {
                 showError(data.error || "Verification failed. Please try again.");
             }
