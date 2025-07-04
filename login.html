@@ -757,7 +757,7 @@
         document.getElementById('submitResetText').textContent = "Sending...";
 
         try {
-            const response = await fetch("https://w1yg1wc8cf.execute-api.af-south-1.amazonaws.com/prod/-forgot-password", {
+            const response = await fetch("https://w1yg1wc8cf.execute-api.af-south-1.amazonaws.com/prod/forgot-password", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email })
