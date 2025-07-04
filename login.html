@@ -668,14 +668,15 @@
     // Toggle password visibility
     document.getElementById('passwordToggle').addEventListener('click', function() {
         const pwdInput = document.getElementById('password');
+        const icon = this.querySelector('i');
         if (pwdInput.type === 'password') {
             pwdInput.type = 'text';
-            this.querySelector('i').classList.remove('fa-eye');
-            this.querySelector('i').classList.add('fa-eye-slash');
+            icon.classList.remove('fa-eye');
+            icon.classList.add('fa-eye-slash');
         } else {
             pwdInput.type = 'password';
-            this.querySelector('i').classList.remove('fa-eye-slash');
-            this.querySelector('i').classList.add('fa-eye');
+            icon.classList.remove('fa-eye-slash');
+            icon.classList.add('fa-eye');
         }
     });
 
@@ -698,24 +699,31 @@
                 body: JSON.stringify({ email, password })
             });
             const data = await response.json();
-            if(response.ok && data.token) {
-                // Save user token and info to localStorage for profile and navigation
-                localStorage.setItem('userToken', data.token);
+
+            // The 'token' property from your API response might be named differently.
+            // Based on our userinfo API, Cognito usually provides an "AccessToken".
+            // Let's check for 'token' or 'AccessToken' from your login API's response.
+            const token = data.AccessToken || data.token;
+
+            if(response.ok && token) {
+                // *** THE FIX IS HERE ***
+                // We are now saving the token with the key 'accessToken'
+                // so that index.html can find it.
+                localStorage.setItem('accessToken', token);
+
+                // These other items are not used by the new index.html script, but we can leave them for now.
                 localStorage.setItem('userEmail', data.email || email);
                 if (data.name) localStorage.setItem('userName', data.name);
-                if (data.avatar) localStorage.setItem('userAvatarUrl', data.avatar);
+                
                 // Redirect to home page
-                window.location.href = "index.html";
-            } else if(response.ok) {
-                // fallback: still go home if ok but no token (legacy API)
                 window.location.href = "index.html";
             } else {
                 document.getElementById("alert-container").innerHTML =
-                    `<div class="alert error"><i class="fas fa-exclamation-circle"></i> ${data.error || "Login failed."}</div>`;
+                    `<div class="alert error"><i class="fas fa-exclamation-circle"></i> ${data.error || "Login failed. Please check your credentials."}</div>`;
             }
         } catch (err) {
             document.getElementById("alert-container").innerHTML =
-                `<div class="alert error"><i class="fas fa-exclamation-circle"></i> Network error. Try again.</div>`;
+                `<div class="alert error"><i class="fas fa-exclamation-circle"></i> A network error occurred. Please try again later.</div>`;
         }
         loginBtn.disabled = false;
         loginBtnText.textContent = "Sign In";
@@ -723,7 +731,7 @@
 
     // ==== Back to Home Button ====
     document.getElementById("backToHomeBtn").addEventListener("click", function(){
-        window.location.href = "/";
+        window.location.href = "index.html"; // Changed to index.html for consistency
     });
 
     // ==== Registration Redirect ====
@@ -732,7 +740,7 @@
         window.location.href = "register.html";
     });
 
-    // ==== Forgot Password Modal ====
+    // ==== Forgot Password Modal Logic ====
     function forgotPassword() {
         document.getElementById('forgotPasswordModal').classList.add('active');
         document.getElementById('resetEmail').value = document.getElementById('email').value || '';
@@ -750,7 +758,7 @@
             return;
         }
         this.disabled = true;
-        document.getElementById('submitResetText').textContent = "Sending...";
+        document.getElementById('submitResetText').innerHTML = '<span class="spinner"></span> Sending...';
 
         try {
             const response = await fetch("https://w1yg1wc8cf.execute-api.af-south-1.amazonaws.com/prod/forgot-password", {
@@ -766,7 +774,7 @@
                 alert(data.error || "Failed to send reset code.");
             }
         } catch (err) {
-            alert("Network error. Try again.");
+            alert("A network error occurred. Please try again.");
         }
         this.disabled = false;
         document.getElementById('submitResetText').textContent = "Send Reset Code";
