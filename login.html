@@ -699,7 +699,7 @@
             });
             const data = await response.json();
             if(response.ok) {
-                window.location.href = "profile.html";
+                window.location.href = "index.html";
             } else {
                 document.getElementById("alert-container").innerHTML =
                     `<div class="alert error"><i class="fas fa-exclamation-circle"></i> ${data.error || "Login failed."}</div>`;
