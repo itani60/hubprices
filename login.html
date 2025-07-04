@@ -700,26 +700,21 @@
             });
             const data = await response.json();
 
-            // The 'token' property from your API response might be named differently.
-            // Based on our userinfo API, Cognito usually provides an "AccessToken".
-            // Let's check for 'token' or 'AccessToken' from your login API's response.
-            const token = data.AccessToken || data.token;
+            // *** THE FIX IS HERE ***
+            // We are now correctly accessing the token inside the 'tokens' object.
+            const token = data.tokens && data.tokens.AccessToken;
 
             if(response.ok && token) {
-                // *** THE FIX IS HERE ***
-                // We are now saving the token with the key 'accessToken'
-                // so that index.html can find it.
+                // Now that we have the correct token, save it with the right key.
                 localStorage.setItem('accessToken', token);
 
-                // These other items are not used by the new index.html script, but we can leave them for now.
-                localStorage.setItem('userEmail', data.email || email);
-                if (data.name) localStorage.setItem('userName', data.name);
-                
                 // Redirect to home page
                 window.location.href = "index.html";
             } else {
+                // Handle cases where the response is ok but the token is missing, or a login error from the API
+                const errorMessage = data.error || data.message || "Login failed. Please check your credentials.";
                 document.getElementById("alert-container").innerHTML =
-                    `<div class="alert error"><i class="fas fa-exclamation-circle"></i> ${data.error || "Login failed. Please check your credentials."}</div>`;
+                    `<div class="alert error"><i class="fas fa-exclamation-circle"></i> ${errorMessage}</div>`;
             }
         } catch (err) {
             document.getElementById("alert-container").innerHTML =
@@ -731,7 +726,7 @@
 
     // ==== Back to Home Button ====
     document.getElementById("backToHomeBtn").addEventListener("click", function(){
-        window.location.href = "index.html"; // Changed to index.html for consistency
+        window.location.href = "index.html";
     });
 
     // ==== Registration Redirect ====
@@ -768,7 +763,6 @@
             });
             const data = await response.json();
             if(response.ok) {
-                // Redirect to reset-password.html with email as param
                 window.location.href = "reset-password.html?email=" + encodeURIComponent(email);
             } else {
                 alert(data.error || "Failed to send reset code.");
