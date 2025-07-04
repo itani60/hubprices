@@ -133,6 +133,31 @@
         }
         .btn-primary:active { transform: translateY(0); }
         .btn-primary:disabled { background: var(--medium-gray); cursor: not-allowed; transform: none; box-shadow: none; }
+        .resend-section {
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-color);
+        }
+        .resend-link {
+            color: var(--secondary-color);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .resend-link:hover {
+            color: var(--primary-color);
+            text-decoration: underline;
+            transform: translateY(-1px);
+        }
+        .countdown {
+            font-size: 0.9rem;
+            color: var(--medium-gray);
+            margin-top: 10px;
+        }
         .message {
             padding: 16px;
             margin-top: 20px;
@@ -219,6 +244,15 @@
         </form>
         <div id="error-message" class="message error-message"></div>
         <div id="success-message" class="message success-message"></div>
+        <div class="resend-section">
+            <a href="#" class="resend-link" id="resend-code">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+                </svg>
+                Didn't receive a code? Send again
+            </a>
+            <div class="countdown" id="countdown" style="display: none;"></div>
+        </div>
         <div class="help-text">
             Check your spam folder if you don't see the email. The code expires in 10 minutes.
         </div>
@@ -268,10 +302,43 @@
         setLoading(false);
     });
 
+    // Resend logic with cooldown
+    let resendCooldown = 60;
+    let resendTimer = null;
+    document.getElementById('resend-code').addEventListener('click', async function(e){
+        e.preventDefault();
+        hideMessage();
+        if (this.classList.contains('disabled')) return;
+        const email = document.getElementById('email').value.trim();
+        if (!email) {
+            showError("Please enter your email address first.");
+            return;
+        }
+        setLoading(true);
+        try {
+            const response = await fetch("https://w1yg1wc8cf.execute-api.af-south-1.amazonaws.com/prod/resend", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email })
+            });
+            const data = await response.json();
+            if (response.ok) {
+                showSuccess("A new verification code has been sent to your email.");
+                startResendCooldown();
+            } else {
+                showError(data.error || "Failed to resend code.");
+            }
+        } catch (err) {
+            showError("Network error. Please try again.");
+        }
+        setLoading(false);
+    });
+
     function setLoading(loading) {
         document.getElementById("verify-button").disabled = loading;
         document.getElementById("loading-spinner").style.display = loading ? "inline-block" : "none";
         document.getElementById("button-text").textContent = loading ? "Verifying..." : "Verify Account";
+        document.getElementById("resend-code").classList.toggle("disabled", loading);
     }
     function showError(msg) {
         let el = document.getElementById("error-message");
@@ -286,6 +353,25 @@
     function hideMessage() {
         document.getElementById("error-message").style.display = "none";
         document.getElementById("success-message").style.display = "none";
+    }
+    function startResendCooldown() {
+        const resend = document.getElementById('resend-code');
+        const countdown = document.getElementById('countdown');
+        resend.classList.add('disabled');
+        resend.style.pointerEvents = "none";
+        let time = resendCooldown;
+        countdown.style.display = "block";
+        countdown.textContent = `You can resend another code in ${time}s`;
+        resendTimer = setInterval(() => {
+            time--;
+            countdown.textContent = `You can resend another code in ${time}s`;
+            if (time <= 0) {
+                clearInterval(resendTimer);
+                resend.classList.remove('disabled');
+                resend.style.pointerEvents = "auto";
+                countdown.style.display = "none";
+            }
+        }, 1000);
     }
     </script>
 </body>
