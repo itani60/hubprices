@@ -8,12 +8,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <meta name="google-signin-client_id" content="982307721628-q0170i6snrdqf1rj6fkmvbmqjtp2tpis.apps.googleusercontent.com">
+    <!--<meta name="google-signin-client_id" content="982307721628-q0170i6snrdqf1rj6fkmvbmqjtp2tpis.apps.googleusercontent.com">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
-    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/amazon-cognito-identity-js/6.3.3/aws-cognito-sdk.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/amazon-cognito-identity-js@6.3.3/dist/amazon-cognito-identity.min.js"></script>
-    <script src="https://sdk.amazonaws.com/js/aws-sdk-2.1.24.min.js"></script>
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>-->
     <style>
         :root {
             --primary-color: #f80101;
@@ -606,8 +603,9 @@
             </div>
             <div id="alert-container" aria-live="polite"></div>
             
-            <!-- Official Google Sign-In Button -->
+            <!-- Uncomment for Google Sign-In 
             <div id="g_id_signin" style="margin-bottom: 16px;"></div>
+            -->
             
             <div class="social-login-divider">
                 <span>or continue with email</span>
@@ -629,27 +627,22 @@
                         </button>
                     </div>
                 </div>
-                
+                <!--
                 <div class="g-recaptcha" data-sitekey="6LdcPG0rAAAAAMdyyLZ__OgpFeGZfjGmbkvsHJ2i"></div>
-                
+                -->
                 <div class="forgot-password">
                     <a href="#" onclick="event.preventDefault(); forgotPassword();" role="button">Forgot password?</a>
                 </div>
-                
                 <button type="submit" class="login-btn" id="loginBtn">
                     <i class="fas fa-sign-in-alt"></i>
                     <span id="loginBtnText">Sign In</span>
                 </button>
-                
                 <div class="register-link">
-                    Don't have an account? <a href="register.html">Create one here</a>
+                    Don't have an account? <a href="#" id="register-link">Create one here</a>
                 </div>
-                
                 <div class="divider">
                     <span>Need to go back?</span>
                 </div>
-                
-                <!-- Back to home now as a button -->
                 <div class="footer-link">
                     <button type="button" id="backToHomeBtn" style="background:none;border:none;color:var(--secondary-color);font-weight:500;cursor:pointer;font-size:inherit;display:inline-flex;align-items:center;gap:6px;">
                         <i class="fas fa-arrow-left"></i> Back to home
@@ -658,7 +651,8 @@
             </form>
         </div>
     </div>
-    
+
+    <!-- Forgot Password Modal -->
     <div class="modal-overlay" id="forgotPasswordModal" role="dialog" aria-labelledby="modalTitle" aria-modal="true">
         <div class="modal-container">
             <div class="modal-header">
@@ -682,16 +676,8 @@
         </div>
     </div>
 
-
 <script>
-  
-    const poolData = {
-        UserPoolId: 'af-south-1_tuKFzoXbw',
-        ClientId: '5ld932l765gvbhtquiagncrepn', D
-        Region: 'af-south-1'
-    };
-
-
+    // Toggle password visibility
     document.getElementById('passwordToggle').addEventListener('click', function() {
         const pwdInput = document.getElementById('password');
         if (pwdInput.type === 'password') {
@@ -705,7 +691,8 @@
         }
     });
 
-    document.getElementById("loginForm").addEventListener("submit", function(e){
+    // Login handler using backend API
+    document.getElementById("loginForm").addEventListener("submit", async function(e){
         e.preventDefault();
         document.getElementById("alert-container").innerHTML = "";
         const email = document.getElementById("email").value.trim();
@@ -716,38 +703,37 @@
         loginBtn.disabled = true;
         loginBtnText.innerHTML = '<span class="spinner"></span>';
 
-        var userPool = new AmazonCognitoIdentity.CognitoUserPool({
-            UserPoolId: poolData.UserPoolId,
-            ClientId: poolData.ClientId
-        });
-
-        var authenticationDetails = new AmazonCognitoIdentity.AuthenticationDetails({
-            Username: email,
-            Password: password
-        });
-
-        var cognitoUser = new AmazonCognitoIdentity.CognitoUser({
-            Username: email,
-            Pool: userPool
-        });
-
-        cognitoUser.authenticateUser(authenticationDetails, {
-            onSuccess: function(result) {
-            
+        try {
+            const response = await fetch("https://w1yg1wc8cf.execute-api.af-south-1.amazonaws.com/prod/logins", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email, password })
+            });
+            const data = await response.json();
+            if(response.ok) {
+                // You can store tokens or user info in localStorage/sessionStorage if your API responds with them
                 window.location.href = "profile.html";
-            },
-            onFailure: function(err) {
+            } else {
                 document.getElementById("alert-container").innerHTML =
-                    `<div class="alert error"><i class="fas fa-exclamation-circle"></i> ${err.message || "Login failed."}</div>`;
-                loginBtn.disabled = false;
-                loginBtnText.textContent = "Sign In";
+                    `<div class="alert error"><i class="fas fa-exclamation-circle"></i> ${data.error || "Login failed."}</div>`;
             }
-        });
+        } catch (err) {
+            document.getElementById("alert-container").innerHTML =
+                `<div class="alert error"><i class="fas fa-exclamation-circle"></i> Network error. Try again.</div>`;
+        }
+        loginBtn.disabled = false;
+        loginBtnText.textContent = "Sign In";
     });
 
     // ==== Back to Home Button ====
     document.getElementById("backToHomeBtn").addEventListener("click", function(){
         window.location.href = "/";
+    });
+
+    // ==== Registration Redirect ====
+    document.getElementById("register-link").addEventListener("click", function(e){
+        e.preventDefault();
+        window.location.href = "register.html";
     });
 
     // ==== Forgot Password Modal ====
@@ -761,7 +747,7 @@
     });
 
     // Handle forgot password submit
-    document.getElementById('submitResetBtn').addEventListener('click', function() {
+    document.getElementById('submitResetBtn').addEventListener('click', async function() {
         let email = document.getElementById('resetEmail').value.trim();
         if (!email) {
             alert("Please enter your email address.");
@@ -769,27 +755,25 @@
         }
         this.disabled = true;
         document.getElementById('submitResetText').textContent = "Sending...";
-        var userPool = new AmazonCognitoIdentity.CognitoUserPool({
-            UserPoolId: poolData.UserPoolId,
-            ClientId: poolData.ClientId
-        });
-        var cognitoUser = new AmazonCognitoIdentity.CognitoUser({
-            Username: email,
-            Pool: userPool
-        });
-        cognitoUser.forgotPassword({
-            onSuccess: function(data) {
-                alert("A verification code has been sent to your email.");
+
+        try {
+            const response = await fetch("https://w1yg1wc8cf.execute-api.af-south-1.amazonaws.com/prod/-forgot-password", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email })
+            });
+            const data = await response.json();
+            if(response.ok) {
+                alert("A reset code has been sent to your email.");
                 document.getElementById('forgotPasswordModal').classList.remove('active');
-                document.getElementById('submitResetBtn').disabled = false;
-                document.getElementById('submitResetText').textContent = "Send Reset Code";
-            },
-            onFailure: function(err) {
-                alert(err.message || "Failed to send reset code.");
-                document.getElementById('submitResetBtn').disabled = false;
-                document.getElementById('submitResetText').textContent = "Send Reset Code";
+            } else {
+                alert(data.error || "Failed to send reset code.");
             }
-        });
+        } catch (err) {
+            alert("Network error. Try again.");
+        }
+        this.disabled = false;
+        document.getElementById('submitResetText').textContent = "Send Reset Code";
     });
 </script>
 </body>
