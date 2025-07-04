@@ -698,7 +698,16 @@
                 body: JSON.stringify({ email, password })
             });
             const data = await response.json();
-            if(response.ok) {
+            if(response.ok && data.token) {
+                // Save user token and info to localStorage for profile and navigation
+                localStorage.setItem('userToken', data.token);
+                localStorage.setItem('userEmail', data.email || email);
+                if (data.name) localStorage.setItem('userName', data.name);
+                if (data.avatar) localStorage.setItem('userAvatarUrl', data.avatar);
+                // Redirect to home page
+                window.location.href = "index.html";
+            } else if(response.ok) {
+                // fallback: still go home if ok but no token (legacy API)
                 window.location.href = "index.html";
             } else {
                 document.getElementById("alert-container").innerHTML =
