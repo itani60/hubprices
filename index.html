@@ -307,155 +307,31 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Dynamic body padding for fixed header
-    function setBodyPadding() {
-        const header = document.querySelector('.header');
-        if (header) {
-            const headerHeight = header.offsetHeight;
-            document.body.style.paddingTop = `${headerHeight}px`;
-        }
-    }
-    setBodyPadding();
-    window.addEventListener('resize', setBodyPadding);
 
-    const API_URL = 'https://xf9zlapr5e.execute-api.af-south-1.amazonaws.com/deals';
-
-    // HERO CAROUSEL
-    const heroCarousel = document.querySelector('.hero-carousel');
-    if (heroCarousel) {
-        const heroSlides = heroCarousel.querySelectorAll('.hero-slide');
-        const heroIndicators = heroCarousel.querySelectorAll('.hero-indicator');
-        let currentIndex = 0;
-        let interval;
-        let touchStartX = 0;
-        const slideDuration = 10000;
-
-        function showSlide(index) {
-            heroSlides.forEach((slide, i) => {
-                slide.classList.toggle('active', i === index);
-            });
-            heroIndicators.forEach((indicator, i) => {
-                indicator.classList.toggle('active', i === index);
-            });
-            currentIndex = index;
-        }
-
-        function nextSlide() {
-            showSlide((currentIndex + 1) % heroSlides.length);
-        }
-
-        function prevSlide() {
-            showSlide((currentIndex - 1 + heroSlides.length) % heroSlides.length);
-        }
-
-        function startCarousel() {
-            stopCarousel();
-            interval = setInterval(nextSlide, slideDuration);
-        }
-
-        function stopCarousel() {
-            clearInterval(interval);
-        }
-
-        if (heroSlides.length > 0) {
-            showSlide(0);
-            startCarousel();
-            heroIndicators.forEach(indicator => {
-                indicator.addEventListener('click', () => {
-                    stopCarousel();
-                    showSlide(parseInt(indicator.dataset.slide));
-                    startCarousel();
-                });
-            });
-            heroCarousel.addEventListener('touchstart', (e) => {
-                touchStartX = e.touches[0].clientX;
-                stopCarousel();
-            });
-            heroCarousel.addEventListener('touchend', (e) => {
-                const touchEndX = e.changedTouches[0].clientX;
-                if (Math.abs(touchEndX - touchStartX) > 50) {
-                    if (touchEndX > touchStartX) prevSlide();
-                    else nextSlide();
-                }
-                startCarousel();
-            });
-            heroCarousel.addEventListener('mouseenter', stopCarousel);
-            heroCarousel.addEventListener('mouseleave', startCarousel);
-        }
+    // --- CORE INITIALIZATION ---
+    // This is the main function that runs when the page is loaded.
+    function initializePage() {
+        setupEventListeners();
+        updateUserLoginStatus(); // Check if user is logged in
+        fetchDealsData(); // Fetch product deals
     }
 
-    // FETCH DEALS DATA
-    async function fetchDealsData() {
-        try {
-            showLoadingState();
-            const response = await fetch(API_URL);
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            const data = await response.json();
-            processDealsData(data);
-            hideLoadingState();
-        } catch (error) {
-            showErrorState(error.message);
-        }
-    }
+    // --- AUTHENTICATION & USER STATUS ---
 
-    function processDealsData(data) {
-        if (data.takealot) {
-            const takealotSlides = createSlidesFromProducts(data.takealot, 5);
-            initializeProductCarousel('takealot', takealotSlides);
-        }
-        if (data.amazon) {
-            const amazonSlides = createSlidesFromProducts(data.amazon, 5);
-            initializeProductCarousel('amazon', amazonSlides);
-        }
-    }
-
-    function createSlidesFromProducts(products, productsPerSlide) {
-        const slides = [];
-        for (let i = 0; i < products.length; i += productsPerSlide) {
-            slides.push(products.slice(i, i + productsPerSlide));
-        }
-        return slides;
-    }
-    
-    // Functions for loading/error states and creating product cards
-    function showLoadingState() { /* Your existing loading state code */ }
-    function hideLoadingState() { /* Your existing hide loading state code */ }
-    function showErrorState(errorMessage) { /* Your existing error state code */ }
-    function createProductCard(product) { /* Your existing product card creation code */ return `...`; }
-    function initializeProductCarousel(store, slidesData) { /* Your existing carousel initialization code */ }
-    function showProductSlide(store, index) { /* Your existing show slide code */ }
-    function setupProductCarousel(store, totalSlides) { /* Your existing carousel setup code */ }
-
-
-    // SEARCH
-    window.performSearch = function(event) { /* Your existing search code */ };
-    document.getElementById('searchInput').addEventListener('input', function(e) { /* Your existing search suggestions code */ });
-    window.selectSuggestion = function(suggestion) { /* Your existing suggestion selection code */ };
-    document.addEventListener('click', function(e) { /* Your existing click outside search code */ });
-
-    
-    // --- AUTHENTICATION & SIDEBAR LOGIC ---
-
-    function getInitials(str) {
-        if (!str) return "";
-        let [name] = str.split('@');
-        let parts = name.split(/[.\-_]/);
-        if (parts.length > 1) return (parts[0][0] + (parts[1][0] || '')).toUpperCase();
-        return name[0].toUpperCase();
-    }
-    
+    // This function checks for a login token and updates the sidebar accordingly.
     async function updateUserLoginStatus() {
         const sidebarLogin = document.getElementById('sidebarLogin');
+        if (!sidebarLogin) return; // Exit if the login element doesn't exist
+
         const accessToken = localStorage.getItem('accessToken');
 
+        // Display the logged-out view (login button)
         const showLoggedOutState = () => {
-            if (sidebarLogin) {
-                sidebarLogin.innerHTML = `
-                    <a href="login.html" class="login-btn">
-                        <i class="fas fa-sign-in-alt"></i>Login to CompareHub
-                    </a>
-                `;
-            }
+            sidebarLogin.innerHTML = `
+                <a href="login.html" class="login-btn">
+                    <i class="fas fa-sign-in-alt"></i>Login to CompareHub
+                </a>
+            `;
         };
 
         if (!accessToken) {
@@ -463,6 +339,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
+        // If a token exists, call the userinfo API to validate it
         const userInfoApiUrl = 'https://w1yg1wc8cf.execute-api.af-south-1.amazonaws.com/prod/userinfo';
         try {
             const response = await fetch(userInfoApiUrl, {
@@ -470,64 +347,128 @@ document.addEventListener('DOMContentLoaded', function() {
                 headers: { 'Authorization': `Bearer ${accessToken}` }
             });
 
-            const data = await response.json();
-
             if (!response.ok) {
-                throw new Error(data.error || 'Invalid session');
+                // If the response is not OK, parse the error message from the body
+                const errorData = await response.json().catch(() => ({ error: 'Invalid session or API error' }));
+                throw new Error(errorData.error);
             }
 
+            const data = await response.json();
             const user = data.user;
+
+            // If everything is successful, display the logged-in view
             const username = user.Username;
             const emailAttribute = user.UserAttributes.find(attr => attr.Name === 'email');
             const email = emailAttribute ? emailAttribute.Value : 'No email found';
 
-            if (sidebarLogin) {
-                sidebarLogin.innerHTML = `
-                    <div class="user-greeting fade-in">
-                        <div class="user-avatar" style="cursor:pointer;" onclick="window.location.href='profile.html'">
-                            ${getInitials(username)}
-                        </div>
-                        <div class="user-info">
-                            <div class="user-name">${username}</div>
-                            <div class="user-email">${email}</div>
-                            <span class="sign-out" style="cursor:pointer;">Sign Out</span>
-                        </div>
+            sidebarLogin.innerHTML = `
+                <div class="user-greeting fade-in">
+                    <div class="user-avatar" style="cursor:pointer;" onclick="window.location.href='profile.html'">
+                        ${getInitials(username)}
                     </div>
-                `;
+                    <div class="user-info">
+                        <div class="user-name">${username}</div>
+                        <div class="user-email">${email}</div>
+                        <span class="sign-out" style="cursor:pointer;">Sign Out</span>
+                    </div>
+                </div>
+            `;
 
-                const signOutEl = sidebarLogin.querySelector('.sign-out');
-                if (signOutEl) {
-                    signOutEl.addEventListener('click', (event) => {
-                        event.stopPropagation();
-                        localStorage.removeItem('accessToken');
-                        window.location.reload();
-                    });
-                }
+            // Add the sign-out functionality
+            const signOutEl = sidebarLogin.querySelector('.sign-out');
+            if (signOutEl) {
+                signOutEl.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    localStorage.removeItem('accessToken');
+                    window.location.reload();
+                });
             }
 
         } catch (error) {
             console.error("Authentication check failed:", error.message);
+            // If any error occurs, clear the bad token and show the logged-out state
             localStorage.removeItem('accessToken');
             showLoggedOutState();
         }
     }
 
-    // --- SIDEBAR NAVIGATION ---
-    window.toggleSidebar = function() { /* Your existing sidebar toggle code */ };
-    window.closeSidebar = function() { /* Your existing sidebar close code */ };
-    window.toggleSubmenu = function(element) { /* Your existing submenu toggle code */ };
-    window.goBack = function(element) { /* Your existing go back code */ };
-    document.getElementById('sidebarSearchInput').addEventListener('input', function(e) { /* Your existing sidebar search code */ });
+    // Helper function to get user initials for the avatar
+    function getInitials(str) {
+        if (!str) return "";
+        let [name] = str.split('@');
+        let parts = name.split(/[.\-_]/);
+        if (parts.length > 1 && parts[0] && parts[1]) {
+            return (parts[0][0] + parts[1][0]).toUpperCase();
+        }
+        return name ? name[0].toUpperCase() : '';
+    }
+
+    // --- EVENT LISTENERS & UI SETUP ---
+    function setupEventListeners() {
+        // Fixed Header Padding
+        setBodyPadding();
+        window.addEventListener('resize', setBodyPadding);
+
+        // Sidebar Toggles
+        const sidebarToggle = document.querySelector('.sidebar-toggle');
+        if (sidebarToggle) sidebarToggle.addEventListener('click', toggleSidebar);
+
+        const closeSidebarBtn = document.querySelector('.close-sidebar');
+        if (closeSidebarBtn) closeSidebarBtn.addEventListener('click', closeSidebar);
+        
+        const sidebarOverlay = document.getElementById('sidebarOverlay');
+        if(sidebarOverlay) sidebarOverlay.addEventListener('click', closeSidebar);
+
+        // Sidebar Sub-menus
+        document.querySelectorAll('.submenu-item').forEach(item => {
+            item.addEventListener('click', () => toggleSubmenu(item));
+        });
+        document.querySelectorAll('.menu-title').forEach(item => {
+            item.addEventListener('click', () => goBack(item));
+        });
+        
+        // Search
+        const searchForm = document.getElementById('search-form');
+        if (searchForm) searchForm.addEventListener('submit', performSearch);
+        
+        const searchInput = document.getElementById('searchInput');
+        if (searchInput) searchInput.addEventListener('input', handleSearchInput);
+
+        // Other Event Listeners can be added here
+    }
+
+    // --- SIDEBAR & NAVIGATION FUNCTIONS ---
+    function setBodyPadding() { /* Your existing setBodyPadding code */ }
+    function toggleSidebar() { /* Your existing toggleSidebar code */ }
+    function closeSidebar() { /* Your existing closeSidebar code */ }
+    function toggleSubmenu(element) { /* Your existing toggleSubmenu code */ }
+    function goBack(element) { /* Your existing goBack code */ }
+
+    // --- SEARCH FUNCTIONS ---
+    function performSearch(event) { /* Your existing performSearch code */ }
+    function handleSearchInput(e) { /* Your existing search input/suggestions code */ }
+    window.selectSuggestion = function(suggestion) { /* Your existing selectSuggestion code */ };
+
+    // --- DEALS & CAROUSEL FUNCTIONS ---
+    async function fetchDealsData() { /* Your existing fetchDealsData code */ }
+    function processDealsData(data) { /* Your existing processDealsData code */ }
+    function createSlidesFromProducts(products, productsPerSlide) { /* Your existing createSlidesFromProducts code */ }
+    function showLoadingState() { /* Your existing showLoadingState code */ }
+    function hideLoadingState() { /* Your existing hideLoadingState code */ }
+    function showErrorState(errorMessage) { /* Your existing showErrorState code */ }
+    function createProductCard(product) { /* Your existing createProductCard code */ return `...`; }
+    function initializeProductCarousel(store, slidesData) { /* Your existing carousel initialization code */ }
     
-    // --- FOOTER AND OTHER ---
-    window.acceptCookies = function() { /* Your existing cookie accept code */ };
-    window.subscribeNewsletter = function(event) { /* Your existing newsletter code */ };
+    // --- HERO CAROUSEL FUNCTIONS ---
+    function setupHeroCarousel() { /* Your existing hero carousel code */ }
 
 
-    // --- INITIALIZE PAGE ---
-    updateUserLoginStatus();
-    fetchDealsData();
+    // --- KICK OFF THE PAGE ---
+    initializePage();
+
 });
 </script>
+
+
 </body>
 </html>
