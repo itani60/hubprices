@@ -734,9 +734,7 @@
             });
             const data = await response.json();
             if(response.ok) {
-                showAlert("Registration successful! Please check your email for a verification code.", "success");
-                // You can redirect or show a verify modal here
-                // window.location.href = "verify.html";
+                window.location.href = "confirm-registration.html?email=" + encodeURIComponent(email);
             } else {
                 showAlert(data.error || "Registration failed.", "error");
             }
