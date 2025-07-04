@@ -8,10 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <!--<meta name="google-signin-client_id" content="982307721628-q0170i6snrdqf1rj6fkmvbmqjtp2tpis.apps.googleusercontent.com">
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
-    <script src="https://www.google.com/recaptcha/api.js" async defer></script>-->
-    <style>
+       <style>
         :root {
             --primary-color: #f80101;
             --primary-hover: #d80000;
@@ -602,15 +599,9 @@
                 <p>Sign in to your account to continue</p>
             </div>
             <div id="alert-container" aria-live="polite"></div>
-            
-            <!-- Uncomment for Google Sign-In 
-            <div id="g_id_signin" style="margin-bottom: 16px;"></div>
-            -->
-            
             <div class="social-login-divider">
                 <span>or continue with email</span>
             </div>
-            
             <form class="login-form" id="loginForm" novalidate>
                 <div class="form-group">
                     <label for="email">Email Address</label>
@@ -627,9 +618,6 @@
                         </button>
                     </div>
                 </div>
-                <!--
-                <div class="g-recaptcha" data-sitekey="6LdcPG0rAAAAAMdyyLZ__OgpFeGZfjGmbkvsHJ2i"></div>
-                -->
                 <div class="forgot-password">
                     <a href="#" onclick="event.preventDefault(); forgotPassword();" role="button">Forgot password?</a>
                 </div>
@@ -711,7 +699,6 @@
             });
             const data = await response.json();
             if(response.ok) {
-                // You can store tokens or user info in localStorage/sessionStorage if your API responds with them
                 window.location.href = "profile.html";
             } else {
                 document.getElementById("alert-container").innerHTML =
@@ -764,8 +751,8 @@
             });
             const data = await response.json();
             if(response.ok) {
-                alert("A reset code has been sent to your email.");
-                document.getElementById('forgotPasswordModal').classList.remove('active');
+                // Redirect to reset-password.html with email as param
+                window.location.href = "reset-password.html?email=" + encodeURIComponent(email);
             } else {
                 alert(data.error || "Failed to send reset code.");
             }
