@@ -317,6 +317,7 @@
             const data = await response.json();
             if (response.ok) {
                 showSuccess("Your email has been verified! You can now <a href='login.html'>sign in</a>.");
+                document.getElementById('verification-form').style.display = "none";
             } else {
                 showError(data.error || "Verification failed. Please try again.");
             }
