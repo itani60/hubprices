@@ -307,6 +307,7 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Dynamic body padding for fixed header
     function setBodyPadding() {
         const header = document.querySelector('.header');
         if (header) {
@@ -641,12 +642,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-// Place this inside a <script> tag at the bottom of your index.html
+    // --- NEW AUTHENTICATION LOGIC ---
 
-document.addEventListener('DOMContentLoaded', function() {
-    // ... [all your existing code above remains unchanged] ...
-
-    // SIDEBAR LOGIN with login and profile redirect, and shows "Logged in" status
+    // Helper function to get initials from a name or email
     function getInitials(str) {
         if (!str) return "";
         let [name] = str.split('@');
@@ -654,67 +652,132 @@ document.addEventListener('DOMContentLoaded', function() {
         if (parts.length > 1) return (parts[0][0] + parts[1][0]).toUpperCase();
         return name[0].toUpperCase();
     }
-
-    function renderSidebarLogin() {
+    
+    // This new function handles checking the token and updating the sidebar UI
+    async function updateUserLoginStatus() {
         const sidebarLogin = document.getElementById('sidebarLogin');
-        const email = localStorage.getItem('userEmail');
-        const name = localStorage.getItem('userName') ||
-            (email ? email.split('@')[0].replace(/\./g, ' ').replace(/(^|\s)\S/g, l => l.toUpperCase()) : '');
-        const avatar = localStorage.getItem('userAvatarUrl');
-        const token = localStorage.getItem('userToken');
-        if (email && token) {
+        const accessToken = localStorage.getItem('accessToken');
+
+        const showLoggedOutState = () => {
             sidebarLogin.innerHTML = `
-                <div class="user-greeting fade-in" style="display:flex;align-items:center;gap:8px;">
-                    <div class="user-avatar" style="cursor:pointer;">
-                        ${avatar ? `<img src="${avatar}" alt="Avatar">` : getInitials(name || email)}
-                    </div>
-                    <div class="user-info">
-                        <div class="user-name" style="font-weight:600;">${name}</div>
-                        <div class="user-email" style="font-size:0.92em;color:#666;">${email}</div>
-                        <span class="logged-in-badge" style="display:inline-block;background:#28a745;color:#fff;font-size:0.85em;padding:2px 8px;border-radius:6px;margin:3px 0;">Logged in</span>
-                        <span class="sign-out" style="cursor:pointer;display:block;font-size:0.93em;color:#dc3545;margin-top:6px;">Sign Out</span>
-                    </div>
-                </div>
-            `;
-            // Avatar click goes to profile.html
-            const avatarEl = sidebarLogin.querySelector('.user-avatar');
-            if (avatarEl) avatarEl.onclick = function(event) {
-                event.preventDefault();
-                event.stopPropagation();
-                window.location.href = "profile.html";
-            };
-            // Sign out clears localStorage and redirects to index.html
-            const signOutEl = sidebarLogin.querySelector('.sign-out');
-            if (signOutEl) signOutEl.onclick = function(event) {
-                event.preventDefault();
-                event.stopPropagation();
-                localStorage.removeItem('userEmail');
-                localStorage.removeItem('userAvatarUrl');
-                localStorage.removeItem('userName');
-                localStorage.removeItem('userToken');
-                window.location.href = "index.html";
-            };
-        } else {
-            // Login button goes to login.html
-            sidebarLogin.innerHTML = `
-                <a href="login.html" class="login-btn" id="sidebarLoginBtn">
+                <a href="login.html" class="login-btn">
                     <i class="fas fa-sign-in-alt"></i>Login to CompareHub
                 </a>
             `;
-            const loginBtn = document.getElementById('sidebarLoginBtn');
-            if (loginBtn) loginBtn.onclick = function(event) {
-                event.preventDefault();
-                window.location.href = "login.html";
-            };
+        };
+
+        if (!accessToken) {
+            showLoggedOutState();
+            return;
+        }
+
+        // If a token exists, we validate it by calling the userinfo API
+        const userInfoApiUrl = 'https://w1yg1wc8cf.execute-api.af-south-1.amazonaws.com/prod/userinfo';
+        try {
+            const response = await fetch(userInfoApiUrl, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`
+                }
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                // This will catch expired or invalid tokens
+                throw new Error(data.error || 'Invalid session');
+            }
+
+            // SUCCESS: The token is valid, so we render the logged-in state
+            const user = data.user;
+            const username = user.Username;
+            const emailAttribute = user.UserAttributes.find(attr => attr.Name === 'email');
+            const email = emailAttribute ? emailAttribute.Value : 'No email found';
+
+            sidebarLogin.innerHTML = `
+                <div class="user-greeting fade-in">
+                    <div class="user-avatar" style="cursor:pointer;" onclick="window.location.href='profile.html'">
+                        ${getInitials(username)}
+                    </div>
+                    <div class="user-info">
+                        <div class="user-name">${username}</div>
+                        <div class="user-email">${email}</div>
+                        <span class="sign-out" style="cursor:pointer;">Sign Out</span>
+                    </div>
+                </div>
+            `;
+
+            // Add the event listener for the dynamically created "Sign Out" button
+            const signOutEl = sidebarLogin.querySelector('.sign-out');
+            if (signOutEl) {
+                signOutEl.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    // Clear the token that confirms login status
+                    localStorage.removeItem('accessToken');
+                    // Reload the page to reflect the change
+                    window.location.reload();
+                });
+            }
+
+        } catch (error) {
+            console.error("Authentication check failed:", error.message);
+            // If the token is bad, remove it and show the logged-out state
+            localStorage.removeItem('accessToken');
+            showLoggedOutState();
         }
     }
 
-    // ... rest of your sidebar, carousel, fetchDealsData, etc scripts remain unchanged ...
 
-    renderSidebarLogin();
+    // SIDEBAR
+    window.toggleSidebar = function() {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebarOverlay');
+        sidebar.classList.toggle('active');
+        overlay.classList.toggle('active');
+    };
 
-    // ... rest of your DOMContentLoaded code (closeSidebar, menu logic, etc) ...
-});
+    window.closeSidebar = function() {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebarOverlay');
+        sidebar.classList.remove('active');
+        overlay.classList.remove('active');
+    };
+
+    window.toggleSubmenu = function(element) {
+        const item = element.parentElement;
+        const isActive = item.classList.contains('active');
+        document.querySelectorAll('.item.active').forEach(activeItem => {
+            if (activeItem !== item) activeItem.classList.remove('active');
+        });
+        item.classList.toggle('active');
+        if (!isActive) {
+            const submenuItems = item.querySelectorAll('.submenu .item');
+            submenuItems.forEach((submenuItem, index) => {
+                setTimeout(() => {
+                    submenuItem.classList.add('slide-in');
+                }, index * 50);
+            });
+        }
+    };
+
+    window.goBack = function(element) {
+        const item = element.closest('.item');
+        item.classList.remove('active');
+    };
+
+    document.getElementById('sidebarSearchInput').addEventListener('input', function(e) {
+        const searchTerm = e.target.value.toLowerCase();
+        const menuItems = document.querySelectorAll('.menu-items .item');
+        menuItems.forEach(item => {
+            const text = item.textContent.toLowerCase();
+            if (text.includes(searchTerm)) {
+                item.style.display = 'block';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    });
 
     document.addEventListener('click', function(e) {
         const sidebar = document.getElementById('sidebar');
@@ -739,6 +802,12 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
 
+    // --- INITIALIZE PAGE ---
+    
+    // Update the login status in the sidebar
+    updateUserLoginStatus();
+    
+    // Fetch the product deals
     fetchDealsData();
 });
 </script>
