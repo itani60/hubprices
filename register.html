@@ -8,7 +8,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/amazon-cognito-identity-js/6.3.3/aws-cognito-sdk.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/amazon-cognito-identity-js@6.3.3/dist/amazon-cognito-identity.min.js"></script>
     <style>
-        :root {
+     :root {
             --primary-color: #f80101;
             --secondary-color: #4285f4;
             --dark-gray: #333;
@@ -579,15 +579,15 @@
                         </div>
                     </div>
                     
-               <div class="checkbox-group">
-    <div class="checkbox">
-        <input type="checkbox" id="terms" required style="position: absolute; opacity: 0; cursor: pointer; height: 100%; width: 100%; margin: 0; z-index: 1;">
-        <div class="checkmark"></div>
-    </div>
-    <label for="terms" class="checkbox-label" style="cursor: pointer;">
-        I agree to the <a href="#" onclick="showTermsModal(); return false;" style="pointer-events: auto;">Terms of Service</a> and <a href="#" onclick="showPrivacyModal(); return false;" style="pointer-events: auto;">Privacy Policy</a>
-    </label>
-</div>
+                    <div class="checkbox-group">
+                        <div class="checkbox">
+                            <input type="checkbox" id="terms" required style="position: absolute; opacity: 0; cursor: pointer; height: 100%; width: 100%; margin: 0; z-index: 1;">
+                            <div class="checkmark"></div>
+                        </div>
+                        <label for="terms" class="checkbox-label" style="cursor: pointer;">
+                            I agree to the <a href="#" onclick="showTermsModal(); return false;" style="pointer-events: auto;">Terms of Service</a> and <a href="#" onclick="showPrivacyModal(); return false;" style="pointer-events: auto;">Privacy Policy</a>
+                        </label>
+                    </div>
                     
                     <button type="submit" class="btn">
                         <i class="fas fa-user-plus"></i>
@@ -609,7 +609,115 @@
     </div>
 
     <script>
+ 
+    const poolData = {
+        UserPoolId: 'af-south-1_tuKFzoXbw', 
+        ClientId: '5ld932l765gvbhtquiagncrepn'
+    };
+  
 
+ 
+    function togglePassword(inputId) {
+        const input = document.getElementById(inputId);
+        const eyeIcon = document.getElementById(inputId + "-eye");
+        if (input.type === "password") {
+            input.type = "text";
+            eyeIcon.classList.remove("fa-eye");
+            eyeIcon.classList.add("fa-eye-slash");
+        } else {
+            input.type = "password";
+            eyeIcon.classList.remove("fa-eye-slash");
+            eyeIcon.classList.add("fa-eye");
+        }
+    }
+
+   
+    function checkPasswordStrength(password) {
+        const lengthCheck = password.length >= 8;
+        const upperCheck = /[A-Z]/.test(password);
+        const numberCheck = /\d/.test(password);
+        const specialCheck = /[^A-Za-z0-9]/.test(password);
+
+        setStrengthIndicator("length-check", lengthCheck);
+        setStrengthIndicator("upper-check", upperCheck);
+        setStrengthIndicator("number-check", numberCheck);
+        setStrengthIndicator("special-check", specialCheck);
+
+        return lengthCheck && upperCheck && numberCheck && specialCheck;
+    }
+    function setStrengthIndicator(id, valid) {
+        const el = document.getElementById(id);
+        el.classList.toggle("valid", valid);
+        el.querySelector("i").className = valid ? "fas fa-check" : "fas fa-times";
+    }
+
+    document.getElementById("password").addEventListener("input", function() {
+        checkPasswordStrength(this.value);
+    });
+
+    
+    document.getElementById("registerForm").addEventListener("submit", function(e){
+        e.preventDefault();
+        document.getElementById("alert-container").innerHTML = "";
+        const firstname = document.getElementById("firstname").value.trim();
+        const lastname = document.getElementById("lastname").value.trim();
+        const email = document.getElementById("email").value.trim();
+        const password = document.getElementById("password").value;
+        const confirmPassword = document.getElementById("confirm-password").value;
+        const terms = document.getElementById("terms").checked;
+
+      
+        if (!firstname || !lastname || !email || !password || !confirmPassword) {
+            showAlert('Please fill in all fields.', 'error');
+            return;
+        }
+        if (!terms) {
+            showAlert('You must agree to the Terms of Service and Privacy Policy.', 'error');
+            return;
+        }
+        if (password !== confirmPassword) {
+            showAlert('Passwords do not match.', 'error');
+            return;
+        }
+        if (!checkPasswordStrength(password)) {
+            showAlert('Password does not meet requirements.', 'error');
+            return;
+        }
+
+ 
+        const btn = this.querySelector("button[type=submit]");
+        btn.disabled = true;
+        btn.querySelector("span").innerHTML = '<span class="spinner"></span>';
+
+    
+        const attributeList = [
+            new AmazonCognitoIdentity.CognitoUserAttribute({ Name: "given_name", Value: firstname }),
+            new AmazonCognitoIdentity.CognitoUserAttribute({ Name: "family_name", Value: lastname }),
+            new AmazonCognitoIdentity.CognitoUserAttribute({ Name: "email", Value: email })
+        ];
+        const userPool = new AmazonCognitoIdentity.CognitoUserPool(poolData);
+
+        userPool.signUp(email, password, attributeList, null, function(err, result) {
+            btn.disabled = false;
+            btn.querySelector("span").textContent = "Create Account";
+            if (err) {
+                showAlert(err.message || "Registration failed.", 'error');
+                return;
+            }
+            showAlert('Registration successful! Please check your email to confirm your account.', 'success');
+    
+            setTimeout(() => { window.location.href = "login.html"; }, 2500);
+        });
+    });
+
+    function showAlert(msg, type) {
+        document.getElementById("alert-container").innerHTML =
+            `<div class="alert ${type}"><i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i> ${msg}</div>`;
+    }
+
+   
+    function showTermsModal() { alert("Show your Terms of Service here."); }
+    function showPrivacyModal() { alert("Show your Privacy Policy here."); }
     </script>
 </body>
 </html>
