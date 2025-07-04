@@ -5,10 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Register | CompareHub</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/amazon-cognito-identity-js/6.3.3/aws-cognito-sdk.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/amazon-cognito-identity-js@6.3.3/dist/amazon-cognito-identity.min.js"></script>
     <style>
-     :root {
+        :root {
             --primary-color: #f80101;
             --secondary-color: #4285f4;
             --dark-gray: #333;
@@ -518,7 +516,7 @@
             <div class="form-container">
                 <div id="alert-container"></div>
                 
-                <form id="registerForm">
+                <form id="registerForm" autocomplete="off">
                     <div class="form-group">
                         <div class="input-group">
                             <input type="text" class="input" id="firstname" placeholder="First Name" required>
@@ -589,9 +587,9 @@
                         </label>
                     </div>
                     
-                    <button type="submit" class="btn">
+                    <button type="submit" class="btn" id="registerBtn">
                         <i class="fas fa-user-plus"></i>
-                        <span>Create Account</span>
+                        <span id="registerBtnText">Create Account</span>
                     </button>
                 </form>
                 
@@ -607,56 +605,78 @@
             </div>
         </div>
     </div>
-
     <script>
- 
-    const poolData = {
-        UserPoolId: 'af-south-1_tuKFzoXbw', 
-        ClientId: '5ld932l765gvbhtquiagncrepn'
-    };
-  
-
- 
-    function togglePassword(inputId) {
-        const input = document.getElementById(inputId);
-        const eyeIcon = document.getElementById(inputId + "-eye");
+    // Password visibility toggle
+    function togglePassword(id) {
+        const input = document.getElementById(id);
+        const eye = document.getElementById(id + '-eye');
         if (input.type === "password") {
             input.type = "text";
-            eyeIcon.classList.remove("fa-eye");
-            eyeIcon.classList.add("fa-eye-slash");
+            eye.classList.remove('fa-eye');
+            eye.classList.add('fa-eye-slash');
         } else {
             input.type = "password";
-            eyeIcon.classList.remove("fa-eye-slash");
-            eyeIcon.classList.add("fa-eye");
+            eye.classList.remove('fa-eye-slash');
+            eye.classList.add('fa-eye');
         }
     }
 
-   
-    function checkPasswordStrength(password) {
-        const lengthCheck = password.length >= 8;
-        const upperCheck = /[A-Z]/.test(password);
-        const numberCheck = /\d/.test(password);
-        const specialCheck = /[^A-Za-z0-9]/.test(password);
+    // Password strength
+    const passwordInput = document.getElementById('password');
+    passwordInput.addEventListener('input', function() {
+        const val = passwordInput.value;
+        const lengthCheck = document.getElementById('length-check');
+        const upperCheck = document.getElementById('upper-check');
+        const numberCheck = document.getElementById('number-check');
+        const specialCheck = document.getElementById('special-check');
 
-        setStrengthIndicator("length-check", lengthCheck);
-        setStrengthIndicator("upper-check", upperCheck);
-        setStrengthIndicator("number-check", numberCheck);
-        setStrengthIndicator("special-check", specialCheck);
+        // Check length
+        if (val.length >= 8) {
+            lengthCheck.classList.add('valid');
+            lengthCheck.querySelector('i').classList.remove('fa-times');
+            lengthCheck.querySelector('i').classList.add('fa-check');
+        } else {
+            lengthCheck.classList.remove('valid');
+            lengthCheck.querySelector('i').classList.remove('fa-check');
+            lengthCheck.querySelector('i').classList.add('fa-times');
+        }
 
-        return lengthCheck && upperCheck && numberCheck && specialCheck;
-    }
-    function setStrengthIndicator(id, valid) {
-        const el = document.getElementById(id);
-        el.classList.toggle("valid", valid);
-        el.querySelector("i").className = valid ? "fas fa-check" : "fas fa-times";
-    }
+        // Uppercase letter
+        if (/[A-Z]/.test(val)) {
+            upperCheck.classList.add('valid');
+            upperCheck.querySelector('i').classList.remove('fa-times');
+            upperCheck.querySelector('i').classList.add('fa-check');
+        } else {
+            upperCheck.classList.remove('valid');
+            upperCheck.querySelector('i').classList.remove('fa-check');
+            upperCheck.querySelector('i').classList.add('fa-times');
+        }
 
-    document.getElementById("password").addEventListener("input", function() {
-        checkPasswordStrength(this.value);
+        // Number
+        if (/\d/.test(val)) {
+            numberCheck.classList.add('valid');
+            numberCheck.querySelector('i').classList.remove('fa-times');
+            numberCheck.querySelector('i').classList.add('fa-check');
+        } else {
+            numberCheck.classList.remove('valid');
+            numberCheck.querySelector('i').classList.remove('fa-check');
+            numberCheck.querySelector('i').classList.add('fa-times');
+        }
+
+        // Special char
+        if (/[!@#$%^&*(),.?":{}|<>]/.test(val)) {
+            specialCheck.classList.add('valid');
+            specialCheck.querySelector('i').classList.remove('fa-times');
+            specialCheck.querySelector('i').classList.add('fa-check');
+        } else {
+            specialCheck.classList.remove('valid');
+            specialCheck.querySelector('i').classList.remove('fa-check');
+            specialCheck.querySelector('i').classList.add('fa-times');
+        }
     });
 
-    
-    document.getElementById("registerForm").addEventListener("submit", function(e){
+    // Registration handler using backend API
+    document.getElementById("registerForm").addEventListener("submit", async function(e){
         e.preventDefault();
         document.getElementById("alert-container").innerHTML = "";
         const firstname = document.getElementById("firstname").value.trim();
@@ -664,60 +684,77 @@
         const email = document.getElementById("email").value.trim();
         const password = document.getElementById("password").value;
         const confirmPassword = document.getElementById("confirm-password").value;
-        const terms = document.getElementById("terms").checked;
+        const termsChecked = document.getElementById("terms").checked;
+        const registerBtn = document.getElementById("registerBtn");
+        const registerBtnText = document.getElementById("registerBtnText");
+        registerBtn.disabled = true;
+        registerBtnText.innerHTML = '<span class="spinner"></span>';
 
-      
+        // Basic validation
         if (!firstname || !lastname || !email || !password || !confirmPassword) {
-            showAlert('Please fill in all fields.', 'error');
+            showAlert("Please fill in all fields.", "error");
+            registerBtn.disabled = false;
+            registerBtnText.textContent = "Create Account";
             return;
         }
-        if (!terms) {
-            showAlert('You must agree to the Terms of Service and Privacy Policy.', 'error');
-            return;
-        }
+
         if (password !== confirmPassword) {
-            showAlert('Passwords do not match.', 'error');
+            showAlert("Passwords do not match.", "error");
+            registerBtn.disabled = false;
+            registerBtnText.textContent = "Create Account";
             return;
         }
-        if (!checkPasswordStrength(password)) {
-            showAlert('Password does not meet requirements.', 'error');
+
+        if (!termsChecked) {
+            showAlert("You must agree to the Terms of Service and Privacy Policy.", "error");
+            registerBtn.disabled = false;
+            registerBtnText.textContent = "Create Account";
             return;
         }
 
- 
-        const btn = this.querySelector("button[type=submit]");
-        btn.disabled = true;
-        btn.querySelector("span").innerHTML = '<span class="spinner"></span>';
+        // Password rules: min 8 chars, uppercase, number, special char
+        if (
+            password.length < 8 ||
+            !/[A-Z]/.test(password) ||
+            !/\d/.test(password) ||
+            !/[!@#$%^&*(),.?":{}|<>]/.test(password)
+        ) {
+            showAlert("Password does not meet requirements.", "error");
+            registerBtn.disabled = false;
+            registerBtnText.textContent = "Create Account";
+            return;
+        }
 
-    
-        const attributeList = [
-            new AmazonCognitoIdentity.CognitoUserAttribute({ Name: "given_name", Value: firstname }),
-            new AmazonCognitoIdentity.CognitoUserAttribute({ Name: "family_name", Value: lastname }),
-            new AmazonCognitoIdentity.CognitoUserAttribute({ Name: "email", Value: email })
-        ];
-        const userPool = new AmazonCognitoIdentity.CognitoUserPool(poolData);
-
-        userPool.signUp(email, password, attributeList, null, function(err, result) {
-            btn.disabled = false;
-            btn.querySelector("span").textContent = "Create Account";
-            if (err) {
-                showAlert(err.message || "Registration failed.", 'error');
-                return;
+        // Send to backend
+        try {
+            const response = await fetch("https://w1yg1wc8cf.execute-api.af-south-1.amazonaws.com/prod/register", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ firstname, lastname, email, password })
+            });
+            const data = await response.json();
+            if(response.ok) {
+                showAlert("Registration successful! Please check your email for a verification code.", "success");
+                // You can redirect or show a verify modal here
+                // window.location.href = "verify.html";
+            } else {
+                showAlert(data.error || "Registration failed.", "error");
             }
-            showAlert('Registration successful! Please check your email to confirm your account.', 'success');
-    
-            setTimeout(() => { window.location.href = "login.html"; }, 2500);
-        });
+        } catch (err) {
+            showAlert("Network error. Try again.", "error");
+        }
+        registerBtn.disabled = false;
+        registerBtnText.textContent = "Create Account";
     });
 
     function showAlert(msg, type) {
         document.getElementById("alert-container").innerHTML =
-            `<div class="alert ${type}"><i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i> ${msg}</div>`;
+            `<div class="alert ${type}"><i class="fas fa-exclamation-circle"></i> ${msg}</div>`;
     }
 
-   
-    function showTermsModal() { alert("Show your Terms of Service here."); }
-    function showPrivacyModal() { alert("Show your Privacy Policy here."); }
+    // Placeholder for Terms/Privacy modal (implement as needed)
+    function showTermsModal() { alert("Show Terms of Service modal here."); }
+    function showPrivacyModal() { alert("Show Privacy Policy modal here."); }
     </script>
 </body>
 </html>
