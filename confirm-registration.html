@@ -238,7 +238,7 @@
         const confirmationCode = document.getElementById('confirmationCode').value.trim();
 
         if (!email || !confirmationCode) {
-            showError("Both email and confirmation code are required.");
+            showError("Email and confirmation code are required.");
             return;
         }
         if (!/^\d{6}$/.test(confirmationCode)) {
