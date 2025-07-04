@@ -681,8 +681,116 @@
             </div>
         </div>
     </div>
-  <script>
 
+
+<script>
+  
+    const poolData = {
+        UserPoolId: 'af-south-1_tuKFzoXbw',
+        ClientId: '5ld932l765gvbhtquiagncrepn', D
+        Region: 'af-south-1'
+    };
+
+
+    document.getElementById('passwordToggle').addEventListener('click', function() {
+        const pwdInput = document.getElementById('password');
+        if (pwdInput.type === 'password') {
+            pwdInput.type = 'text';
+            this.querySelector('i').classList.remove('fa-eye');
+            this.querySelector('i').classList.add('fa-eye-slash');
+        } else {
+            pwdInput.type = 'password';
+            this.querySelector('i').classList.remove('fa-eye-slash');
+            this.querySelector('i').classList.add('fa-eye');
+        }
+    });
+
+    document.getElementById("loginForm").addEventListener("submit", function(e){
+        e.preventDefault();
+        document.getElementById("alert-container").innerHTML = "";
+        const email = document.getElementById("email").value.trim();
+        const password = document.getElementById("password").value;
+
+        const loginBtn = document.getElementById("loginBtn");
+        const loginBtnText = document.getElementById("loginBtnText");
+        loginBtn.disabled = true;
+        loginBtnText.innerHTML = '<span class="spinner"></span>';
+
+        var userPool = new AmazonCognitoIdentity.CognitoUserPool({
+            UserPoolId: poolData.UserPoolId,
+            ClientId: poolData.ClientId
+        });
+
+        var authenticationDetails = new AmazonCognitoIdentity.AuthenticationDetails({
+            Username: email,
+            Password: password
+        });
+
+        var cognitoUser = new AmazonCognitoIdentity.CognitoUser({
+            Username: email,
+            Pool: userPool
+        });
+
+        cognitoUser.authenticateUser(authenticationDetails, {
+            onSuccess: function(result) {
+            
+                window.location.href = "profile.html";
+            },
+            onFailure: function(err) {
+                document.getElementById("alert-container").innerHTML =
+                    `<div class="alert error"><i class="fas fa-exclamation-circle"></i> ${err.message || "Login failed."}</div>`;
+                loginBtn.disabled = false;
+                loginBtnText.textContent = "Sign In";
+            }
+        });
+    });
+
+    // ==== Back to Home Button ====
+    document.getElementById("backToHomeBtn").addEventListener("click", function(){
+        window.location.href = "/";
+    });
+
+    // ==== Forgot Password Modal ====
+    function forgotPassword() {
+        document.getElementById('forgotPasswordModal').classList.add('active');
+        document.getElementById('resetEmail').value = document.getElementById('email').value || '';
+    }
+
+    document.getElementById('cancelResetBtn').addEventListener('click', function() {
+        document.getElementById('forgotPasswordModal').classList.remove('active');
+    });
+
+    // Handle forgot password submit
+    document.getElementById('submitResetBtn').addEventListener('click', function() {
+        let email = document.getElementById('resetEmail').value.trim();
+        if (!email) {
+            alert("Please enter your email address.");
+            return;
+        }
+        this.disabled = true;
+        document.getElementById('submitResetText').textContent = "Sending...";
+        var userPool = new AmazonCognitoIdentity.CognitoUserPool({
+            UserPoolId: poolData.UserPoolId,
+            ClientId: poolData.ClientId
+        });
+        var cognitoUser = new AmazonCognitoIdentity.CognitoUser({
+            Username: email,
+            Pool: userPool
+        });
+        cognitoUser.forgotPassword({
+            onSuccess: function(data) {
+                alert("A verification code has been sent to your email.");
+                document.getElementById('forgotPasswordModal').classList.remove('active');
+                document.getElementById('submitResetBtn').disabled = false;
+                document.getElementById('submitResetText').textContent = "Send Reset Code";
+            },
+            onFailure: function(err) {
+                alert(err.message || "Failed to send reset code.");
+                document.getElementById('submitResetBtn').disabled = false;
+                document.getElementById('submitResetText').textContent = "Send Reset Code";
+            }
+        });
+    });
 </script>
 </body>
 </html>
