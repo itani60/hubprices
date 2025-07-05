@@ -275,18 +275,27 @@
         </div>
     </footer>
 <script>
-// profile.js
+
 
 document.addEventListener('DOMContentLoaded', async function() {
-    // Helper to get attribute from both possible keys
+    // ---------- USER INFO HELPERS (Handles Cognito and Google users) ----------
     function getAttribute(userInfo, attrName) {
         const attrs = userInfo.Attributes || userInfo.UserAttributes || [];
-        if (!Array.isArray(attrs)) return '';
-        const found = attrs.find(attr => attr.Name === attrName);
-        return found ? found.Value : '';
+        if (Array.isArray(attrs)) {
+            const found = attrs.find(attr => attr.Name === attrName);
+            if (found) return found.Value;
+        }
+        // Google user: direct property
+        if (userInfo[attrName]) return userInfo[attrName];
+        // Support your custom Google shape
+        if (attrName === 'picture' && userInfo.avatar) return userInfo.avatar;
+        if (attrName === 'picture' && userInfo.picture) return userInfo.picture;
+        return '';
     }
 
     function getDisplayName(userInfo) {
+        if (userInfo.name) return userInfo.name;
+        if (userInfo.displayName) return userInfo.displayName;
         let firstName = getAttribute(userInfo, 'given_name');
         let lastName = getAttribute(userInfo, 'family_name');
         let name = getAttribute(userInfo, 'name');
@@ -294,10 +303,11 @@ document.addEventListener('DOMContentLoaded', async function() {
         if (firstName) return firstName + (lastName ? ' ' + lastName : '');
         if (name) return name;
         if (email) return email.split('@')[0].replace(/[.\-_]/g, ' ').replace(/(^|\s)\S/g, l => l.toUpperCase());
-        return userInfo.Username;
+        return userInfo.userId || userInfo.Username || '';
     }
 
     function getAvatarInitials(userInfo) {
+        if (userInfo.avatar || userInfo.picture) return ""; // Show avatar photo if available
         const displayName = getDisplayName(userInfo);
         if (displayName) {
             const parts = displayName.split(' ');
@@ -307,43 +317,15 @@ document.addEventListener('DOMContentLoaded', async function() {
         return 'U';
     }
 
-    async function fetchUserInfoFromAPI(token) {
-        try {
-            const resp = await fetch("https://w1yg1wc8cf.execute-api.af-south-1.amazonaws.com/prod/userinfo", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${token}`
-                }
-            });
-            if (!resp.ok) throw new Error("Failed to fetch user info from API");
-            const data = await resp.json();
-            if (data && data.user) {
-                localStorage.setItem('userInfo', JSON.stringify(data.user));
-                return data.user;
-            }
-        } catch (e) {
-            console.warn("API userinfo fetch failed:", e);
-        }
-        return null;
-    }
-
+    // Only require userInfo, not authToken, for session
     async function loadAndRenderProfile() {
         let userInfo = null;
-        let authToken = localStorage.getItem('authToken');
         try {
             userInfo = JSON.parse(localStorage.getItem('userInfo'));
         } catch (e) { userInfo = null; }
 
-        let attrs = (userInfo && (userInfo.Attributes || userInfo.UserAttributes)) || [];
-        let missingProfile = !userInfo || !Array.isArray(attrs) || attrs.length === 0;
-
-        if (missingProfile && authToken) {
-            userInfo = await fetchUserInfoFromAPI(authToken);
-            attrs = (userInfo && (userInfo.Attributes || userInfo.UserAttributes)) || [];
-        }
-
-        if (!userInfo || !authToken) {
+        // If not logged in, redirect
+        if (!userInfo) {
             localStorage.removeItem('authToken');
             localStorage.removeItem('userInfo');
             window.location.href = "login.html";
@@ -356,24 +338,57 @@ document.addEventListener('DOMContentLoaded', async function() {
         const firstName = getAttribute(userInfo, 'given_name');
         const lastName = getAttribute(userInfo, 'family_name');
         const avatarInitials = getAvatarInitials(userInfo);
+        const avatarPic = getAttribute(userInfo, 'picture');
 
-        document.getElementById('avatarInitials').innerHTML = `
-            ${avatarInitials}
-            <button class="avatar-upload">
+        // Avatar rendering (image if available, initials otherwise)
+        const avatarDiv = document.getElementById('avatarInitials');
+        avatarDiv.innerHTML = `
+            ${avatarPic ? `<img src="${avatarPic}" alt="Avatar" class="avatar-img"/>` : avatarInitials}
+            <button class="avatar-upload" title="Upload new avatar">
                 <i class="fas fa-camera"></i>
             </button>
         `;
+
         document.getElementById('profileName').textContent = displayName;
         document.getElementById('profileEmail').textContent = email || '';
 
-        document.getElementById('firstName').value = firstName || '';
-        document.getElementById('lastName').value = lastName || '';
+        // If Google user, don't allow editing name/email fields (they have no update endpoint)
+        const googleUser = userInfo.provider === 'Google' || userInfo.sub || userInfo.userId;
+        document.getElementById('firstName').value = firstName || (googleUser ? displayName.split(' ')[0] : '');
+        document.getElementById('lastName').value = lastName || (googleUser ? (displayName.split(' ')[1] || '') : '');
         document.getElementById('email').value = email || '';
+
+        document.getElementById('firstName').readOnly = !!googleUser;
+        document.getElementById('lastName').readOnly = !!googleUser;
+        document.getElementById('email').readOnly = true;
+
+        // Hide password section for Google users
+        if (googleUser) {
+            document.getElementById('privacy-form').style.display = "none";
+        } else {
+            document.getElementById('privacy-form').style.display = "";
+        }
     }
 
-    // --- API Calls ---
+    // Dummy API Calls for updating profile (Cognito only)
     async function updateProfileName(firstName, lastName) {
+        // Only update if not Google user
+        let userInfo = null;
+        try {
+            userInfo = JSON.parse(localStorage.getItem('userInfo'));
+        } catch (e) {}
+        const googleUser = userInfo && (userInfo.provider === 'Google' || userInfo.sub || userInfo.userId);
+        if (googleUser) {
+            alert("Google users cannot update their name via this form.");
+            return false;
+        }
+
         const authToken = localStorage.getItem('authToken');
+        if (!authToken) {
+            alert("Session expired. Please log in again.");
+            window.location.href = "login.html";
+            return false;
+        }
         // Validate: At least one name field must be non-empty
         if (!firstName && !lastName) {
             alert('Please enter at least a first or last name to update your profile.');
@@ -383,7 +398,6 @@ document.addEventListener('DOMContentLoaded', async function() {
         const payload = {};
         if (firstName) payload.given_name = firstName;
         if (lastName) payload.family_name = lastName;
-        // For display, you can keep the combined name if either is provided
         payload.name = [firstName, lastName].filter(Boolean).join(' ').trim();
 
         try {
@@ -401,7 +415,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 throw new Error(data.error || "Failed to update profile name");
             }
             // Update local userInfo
-            await fetchUserInfoFromAPI(authToken);
+            // You may want to re-fetch userInfo here from the server
             return true;
         } catch (err) {
             alert(err.message);
