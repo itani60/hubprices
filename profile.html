@@ -275,226 +275,136 @@
         </div>
     </footer>
 <script>
-function getInitials(str) {
-    if (!str) return "";
-    let [name] = str.split('@');
-    let parts = name.split(/[.\-_]/);
-    if (parts.length > 1) return (parts[0][0] + parts[1][0]).toUpperCase();
-    return name[0].toUpperCase();
-}
+// profile.js
 
-function renderSidebarLogin() {
-    const sidebarLogin = document.getElementById('sidebarLogin');
-    const email = localStorage.getItem('userEmail');
-    const name = localStorage.getItem('userName') ||
-        (email ? email.split('@')[0].replace(/\./g, ' ').replace(/(^|\s)\S/g, l => l.toUpperCase()) : '');
-    const avatar = localStorage.getItem('userAvatarUrl');
-    if (email) {
-        sidebarLogin.innerHTML = `
-            <div class="user-greeting fade-in">
-                <div class="user-avatar" style="cursor:pointer;">
-                    ${avatar ? `<img src="${avatar}" alt="Avatar">` : getInitials(name || email)}
-                </div>
-                <div class="user-info">
-                    <div class="user-name">${name}</div>
-                    <div class="user-email">${email}</div>
-                    <span class="sign-out" style="cursor:pointer;">Sign Out</span>
-                </div>
-            </div>
-        `;
-        // Avatar click goes to profile.html
-        const avatarEl = sidebarLogin.querySelector('.user-avatar');
-        if (avatarEl) avatarEl.onclick = function(event) {
-            event.preventDefault();
-            event.stopPropagation();
-            window.location.href = "profile.html";
-        };
-        // Sign out clears localStorage and redirects to index.html
-        const signOutEl = sidebarLogin.querySelector('.sign-out');
-        if (signOutEl) signOutEl.onclick = function(event) {
-            event.preventDefault();
-            event.stopPropagation();
-            localStorage.removeItem('userEmail');
-            localStorage.removeItem('userAvatarUrl');
-            localStorage.removeItem('userName');
-            localStorage.removeItem('userToken');
-            window.location.href = "index.html";
-        };
-    } else {
-        // Login button goes to login.html
-        sidebarLogin.innerHTML = `
-            <a href="login.html" class="login-btn" id="sidebarLoginBtn">
-                <i class="fas fa-sign-in-alt"></i>Login to CompareHub
-            </a>
-        `;
-        const loginBtn = document.getElementById('sidebarLoginBtn');
-        if (loginBtn) loginBtn.onclick = function(event) {
-            event.preventDefault();
-            window.location.href = "login.html";
-        };
+document.addEventListener('DOMContentLoaded', function() {
+    // --- PROFILE INFO LOAD ---
+    function getUserInfoFromStorage() {
+        let userInfo = null;
+        try {
+            userInfo = JSON.parse(localStorage.getItem('userInfo'));
+        } catch (err) {}
+        return userInfo;
     }
-}
 
-window.toggleSidebar = function() {
-    const sidebar = document.getElementById('sidebar');
-    const overlay = document.getElementById('sidebarOverlay');
-    sidebar.classList.toggle('active');
-    overlay.classList.toggle('active');
-};
-
-window.closeSidebar = function() {
-    const sidebar = document.getElementById('sidebar');
-    const overlay = document.getElementById('sidebarOverlay');
-    sidebar.classList.remove('active');
-    overlay.classList.remove('active');
-};
-
-window.toggleSubmenu = function(element) {
-    const item = element.parentElement;
-    const isActive = item.classList.contains('active');
-    document.querySelectorAll('.item.active').forEach(activeItem => {
-        if (activeItem !== item) activeItem.classList.remove('active');
-    });
-    item.classList.toggle('active');
-    if (!isActive) {
-        const submenuItems = item.querySelectorAll('.submenu .item');
-        submenuItems.forEach((submenuItem, index) => {
-            setTimeout(() => {
-                submenuItem.classList.add('slide-in');
-            }, index * 50);
-        });
+    function getAttribute(userInfo, attrName) {
+        if (!userInfo || !userInfo.Attributes) return '';
+        const found = userInfo.Attributes.find(attr => attr.Name === attrName);
+        return found ? found.Value : '';
     }
-};
 
-window.goBack = function(element) {
-    const item = element.closest('.item');
-    item.classList.remove('active');
-};
+    function getFirstAndLastName(userInfo) {
+        // Try to get name, given_name, family_name, or parse from email
+        let name = getAttribute(userInfo, 'name');
+        let firstName = getAttribute(userInfo, 'given_name');
+        let lastName = getAttribute(userInfo, 'family_name');
+        const email = getAttribute(userInfo, 'email');
 
-document.getElementById('sidebarSearchInput').addEventListener('input', function(e) {
-    const searchTerm = e.target.value.toLowerCase();
-    const menuItems = document.querySelectorAll('.menu-items .item');
-    menuItems.forEach(item => {
-        const text = item.textContent.toLowerCase();
-        if (text.includes(searchTerm)) {
-            item.style.display = 'block';
-        } else {
-            item.style.display = 'none';
+        // If Cognito 'name' is a full name, split it
+        if (!firstName && !lastName && name) {
+            const parts = name.trim().split(' ');
+            if (parts.length > 1) {
+                firstName = parts[0];
+                lastName = parts.slice(1).join(' ');
+            } else {
+                firstName = name;
+                lastName = '';
+            }
         }
-    });
-});
-renderSidebarLogin();
-
-document.addEventListener('click', function(e) {
-    const sidebar = document.getElementById('sidebar');
-    const toggle = document.querySelector('.sidebar-toggle');
-    const overlay = document.getElementById('sidebarOverlay');
-    if (sidebar && !sidebar.contains(e.target) && e.target !== toggle && e.target !== overlay) {
-        closeSidebar();
+        // If no name, fallback to email
+        if (!firstName && email) {
+            firstName = email.split('@')[0].replace(/\./g, ' ').replace(/(^|\s)\S/g, l => l.toUpperCase());
+        }
+        return { firstName: firstName || '', lastName: lastName || '', email: email || '' };
     }
-});
-window.acceptCookies = function() {
-    const cookieNotice = document.querySelector('.cookie-notice');
-    if (cookieNotice) cookieNotice.style.display = 'none';
-};
-window.subscribeNewsletter = function(event) {
-    event.preventDefault();
-    const input = event.target.querySelector('input[type="email"]');
-    if (input && input.value) {
-        alert('Thank you for subscribing!');
-        input.value = '';
-    }
-};
 
-/* Profile section navigation logic */
-document.querySelectorAll('.profile-nav .nav-link').forEach(link => {
-    link.addEventListener('click', function(e) {
-        e.preventDefault();
-        document.querySelectorAll('.profile-nav .nav-link').forEach(nav => nav.classList.remove('active'));
-        this.classList.add('active');
-        const section = this.getAttribute('data-section');
-        document.querySelectorAll('.profile-section').forEach(sec => sec.classList.remove('active'));
-        if (section) {
+    function getAvatarInitials(name, email) {
+        // Use initials from name, or from email username part
+        if (name) {
+            const parts = name.split(' ');
+            if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+            return name[0].toUpperCase();
+        }
+        if (email) {
+            const user = email.split('@')[0];
+            if (user.includes('.')) {
+                const uParts = user.split('.');
+                return (uParts[0][0] + uParts[1][0]).toUpperCase();
+            }
+            return user[0].toUpperCase();
+        }
+        return 'U';
+    }
+
+    function renderProfile() {
+        const userInfo = getUserInfoFromStorage();
+        if (!userInfo) return;
+
+        // Get values
+        const displayEmail = getAttribute(userInfo, 'email');
+        const displayNameRaw = getAttribute(userInfo, 'name');
+        const firstNameAttr = getAttribute(userInfo, 'given_name');
+        const lastNameAttr = getAttribute(userInfo, 'family_name');
+
+        const { firstName, lastName, email } = getFirstAndLastName(userInfo);
+
+        // Avatar initials for circle
+        const avatarInitials = getAvatarInitials(displayNameRaw || firstName, displayEmail);
+
+        // Profile sidebar
+        document.getElementById('avatarInitials').innerHTML = `
+            ${avatarInitials}
+            <button class="avatar-upload">
+                <i class="fas fa-camera"></i>
+            </button>
+        `;
+        document.getElementById('profileName').textContent = firstName + (lastName ? ' ' + lastName : '');
+        document.getElementById('profileEmail').textContent = email;
+
+        // Profile form fields
+        document.getElementById('firstName').value = firstName;
+        document.getElementById('lastName').value = lastName;
+        document.getElementById('email').value = email;
+    }
+
+    renderProfile();
+
+    // Section navigation (Profile, Wishlist, etc)
+    document.querySelectorAll('.profile-nav .nav-link').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            document.querySelectorAll('.profile-nav .nav-link').forEach(l => l.classList.remove('active'));
+            this.classList.add('active');
+            const section = this.getAttribute('data-section');
+            document.querySelectorAll('.profile-section').forEach(sec => sec.classList.remove('active'));
             document.getElementById(section).classList.add('active');
             document.getElementById('section-title').textContent = this.textContent.trim();
-        }
-    });
-});
-
-/* Logout button in privacy section */
-document.getElementById('logoutBtn').addEventListener('click', function() {
-    localStorage.removeItem('userEmail');
-    localStorage.removeItem('userAvatarUrl');
-    localStorage.removeItem('userName');
-    localStorage.removeItem('userToken');
-    window.location.href = "login.html";
-});
-
-/* Fetch and fill profile info from /prod/userinfo */
-async function loadUserProfile() {
-    const token = localStorage.getItem('userToken');
-    if (!token) {
-        window.location.href = "login.html";
-        return;
-    }
-    try {
-        const response = await fetch("https://w1yg1wc8cf.execute-api.af-south-1.amazonaws.com/prod/userinfo", {
-            method: "GET",
-            headers: {
-                "Authorization": token,
-                "Content-Type": "application/json"
-            }
         });
-        if (!response.ok) {
+    });
+
+    // Logout (from privacy section)
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', function() {
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('userInfo');
             window.location.href = "login.html";
-            return;
-        }
-        const data = await response.json();
-        document.getElementById('profileName').textContent =
-            data.name || (data.given_name && data.family_name ? data.given_name + " " + data.family_name : "") || "";
-        document.getElementById('profileEmail').textContent = data.email || "";
-        document.getElementById('firstName').value = data.given_name || "";
-        document.getElementById('lastName').value = data.family_name || "";
-        document.getElementById('email').value = data.email || "";
-        // Avatar initials
-        const initials = (data.given_name && data.family_name)
-            ? (data.given_name[0] + data.family_name[0]).toUpperCase()
-            : (data.name
-                ? data.name.split(' ').map(n => n[0]).join('').toUpperCase()
-                : (data.email ? data.email[0].toUpperCase() : 'U'));
-        // Set initials in avatar
-        document.getElementById('avatarInitials').childNodes[0].nodeValue = initials;
-    } catch (err) {
-        console.error("Failed to fetch user info", err);
-        window.location.href = "login.html";
+        });
     }
-}
 
-window.addEventListener('DOMContentLoaded', function() {
-    loadUserProfile();
-    // Wishlist count, savings, alerts etc can also be fetched from API if available
-    document.getElementById('wishlistCount').textContent = localStorage.getItem('wishlistCount') || "0";
-    document.getElementById('totalSavings').textContent = "R" + (localStorage.getItem('totalSavings') || "0");
-    document.getElementById('alertsCount').textContent = localStorage.getItem('alertsCount') || "0";
-});
-
-/* Example: handle search box in header */
-window.performSearch = function(event) {
-    event.preventDefault();
-    const searchInput = document.getElementById('searchInput');
-    const query = searchInput.value.trim();
-    if (query) {
-        alert(`Searching for: ${query}`);
-    }
-};
-/* Example: wishlist search (mock/UX only) */
-document.getElementById('wishlistSearch').addEventListener('input', function(e) {
-    const val = e.target.value;
-    document.getElementById('clearWishlistSearch').style.display = val ? 'inline-block' : 'none';
-});
-document.getElementById('clearWishlistSearch').addEventListener('click', function() {
-    document.getElementById('wishlistSearch').value = '';
-    this.style.display = 'none';
+    // Dummy handlers for other forms (update, change password, etc)
+    document.getElementById('profile-form').addEventListener('submit', function(e){
+        e.preventDefault();
+        alert('Profile updated! (Demo)');
+    });
+    document.getElementById('settings-form').addEventListener('submit', function(e){
+        e.preventDefault();
+        alert('Settings saved! (Demo)');
+    });
+    document.getElementById('privacy-form').addEventListener('submit', function(e){
+        e.preventDefault();
+        alert('Password changed! (Demo)');
+    });
 });
 </script>
 </body>
