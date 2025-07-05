@@ -540,7 +540,7 @@ document.addEventListener('DOMContentLoaded', function() {
         indicators.forEach(indicator => indicator.classList.remove('active'));
 
         if (slides[index]) slides[index].classList.add('active');
-        if (indicators[index]) indicators[index].classList.add('active');
+        if (indicators[index]) indicators.classList.add('active');
     }
 
     function setupProductCarousel(store, totalSlides) {
@@ -672,7 +672,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (attr.Name === 'picture') avatar = attr.Value;
                 }
             }
-            // fallback
+            // fallback: use email username if no display name
             if (!name && email) name = email.split('@')[0].replace(/\./g, ' ').replace(/(^|\s)\S/g, l => l.toUpperCase());
             if (!avatar && name) avatar = '';
 
