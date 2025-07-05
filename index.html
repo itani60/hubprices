@@ -332,26 +332,21 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
         // Google user: direct property
         if (userInfo[attrName]) return userInfo[attrName];
-        if (attrName === 'sub' && userInfo.sub) return userInfo.sub;
+        // Support your custom Google shape
+        if (attrName === 'picture' && userInfo.avatar) return userInfo.avatar;
+        if (attrName === 'picture' && userInfo.picture) return userInfo.picture;
         return '';
     }
 
     function getDisplayName(userInfo) {
-        // Google user: name field
         if (userInfo.name) return userInfo.name;
-        // Cognito: first, last, name, email
-        let firstName = getAttribute(userInfo, 'given_name');
-        let lastName = getAttribute(userInfo, 'family_name');
-        let name = getAttribute(userInfo, 'name');
-        let email = getAttribute(userInfo, 'email');
-        if (firstName) return firstName + (lastName ? ' ' + lastName : '');
-        if (name) return name;
-        if (email) return email.split('@')[0].replace(/[.\-_]/g, ' ').replace(/(^|\s)\S/g, l => l.toUpperCase());
-        return userInfo.Username || '';
+        if (userInfo.displayName) return userInfo.displayName;
+        if (userInfo.email) return userInfo.email.split('@')[0].replace(/[.\-_]/g, ' ').replace(/(^|\s)\S/g, l => l.toUpperCase());
+        return userInfo.userId || userInfo.Username || '';
     }
 
     function getAvatarInitials(userInfo) {
-        if (userInfo.picture) return ""; // Show avatar photo, not initials
+        if (userInfo.avatar || userInfo.picture) return ""; // Show avatar photo if available
         const displayName = getDisplayName(userInfo);
         if (displayName) {
             const parts = displayName.split(' ');
@@ -391,16 +386,8 @@ document.addEventListener('DOMContentLoaded', async function() {
             userInfo = JSON.parse(localStorage.getItem('userInfo'));
         } catch (err) { userInfo = null; }
 
-        // Try fetching profile if missing/empty
-        let attrs = (userInfo && (userInfo.Attributes || userInfo.UserAttributes)) || [];
-        let missingProfile = !userInfo || (!userInfo.picture && (!Array.isArray(attrs) || attrs.length === 0));
-
-        if (missingProfile && authToken) {
-            userInfo = await fetchUserInfoFromAPI(authToken);
-            attrs = (userInfo && (userInfo.Attributes || userInfo.UserAttributes)) || [];
-        }
-
-        if (!userInfo || !authToken) {
+        // Accept Google users with userInfo but no authToken
+        if (!userInfo) {
             sidebarLogin.innerHTML = `
                 <a href="login.html" class="login-btn">
                     <i class="fas fa-sign-in-alt"></i>Login to CompareHub
