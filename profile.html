@@ -275,16 +275,27 @@
         </div>
     </footer>
 <script>
-// profile.js
-
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     // --- PROFILE INFO LOAD ---
-    function getUserInfoFromStorage() {
-        let userInfo = null;
+    async function fetchUserInfoFromAPI(token) {
         try {
-            userInfo = JSON.parse(localStorage.getItem('userInfo'));
-        } catch (err) {}
-        return userInfo;
+            const resp = await fetch("https://w1yg1wc8cf.execute-api.af-south-1.amazonaws.com/prod/userinfo", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                }
+            });
+            if (!resp.ok) throw new Error("Failed to fetch user info from API");
+            const data = await resp.json();
+            if (data && data.user) {
+                localStorage.setItem('userInfo', JSON.stringify(data.user));
+                return data.user;
+            }
+        } catch (e) {
+            console.warn("API userinfo fetch failed:", e);
+        }
+        return null;
     }
 
     function getAttribute(userInfo, attrName) {
@@ -294,12 +305,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function getFirstAndLastName(userInfo) {
-        // Try to get name, given_name, family_name, or parse from email
         let name = getAttribute(userInfo, 'name');
         let firstName = getAttribute(userInfo, 'given_name');
         let lastName = getAttribute(userInfo, 'family_name');
         const email = getAttribute(userInfo, 'email');
-
         // If Cognito 'name' is a full name, split it
         if (!firstName && !lastName && name) {
             const parts = name.trim().split(' ');
@@ -321,7 +330,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function getAvatarInitials(name, email) {
         // Use initials from name, or from email username part
         if (name) {
-            const parts = name.split(' ');
+            const parts = name.trim().split(' ');
             if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
             return name[0].toUpperCase();
         }
@@ -336,19 +345,40 @@ document.addEventListener('DOMContentLoaded', function() {
         return 'U';
     }
 
-    function renderProfile() {
-        const userInfo = getUserInfoFromStorage();
-        if (!userInfo) return;
+    async function loadAndRenderProfile() {
+        let userInfo = null;
+        let authToken = localStorage.getItem('authToken');
+        try {
+            userInfo = JSON.parse(localStorage.getItem('userInfo'));
+        } catch (e) { userInfo = null; }
 
-        // Get values
+        // If missing or clearly incomplete, fetch from API
+        let missingProfile =
+            !userInfo ||
+            !userInfo.Attributes ||
+            userInfo.Attributes.length === 0 ||
+            (!getAttribute(userInfo, "name") &&
+             !getAttribute(userInfo, "given_name") &&
+             !getAttribute(userInfo, "email"));
+
+        if (missingProfile && authToken) {
+            userInfo = await fetchUserInfoFromAPI(authToken);
+        }
+
+        // If still not present, force logout
+        if (!userInfo || !authToken) {
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('userInfo');
+            window.location.href = "login.html";
+            return;
+        }
+
+        // Get values for display
         const displayEmail = getAttribute(userInfo, 'email');
         const displayNameRaw = getAttribute(userInfo, 'name');
         const firstNameAttr = getAttribute(userInfo, 'given_name');
         const lastNameAttr = getAttribute(userInfo, 'family_name');
-
         const { firstName, lastName, email } = getFirstAndLastName(userInfo);
-
-        // Avatar initials for circle
         const avatarInitials = getAvatarInitials(displayNameRaw || firstName, displayEmail);
 
         // Profile sidebar
@@ -367,9 +397,9 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('email').value = email;
     }
 
-    renderProfile();
+    await loadAndRenderProfile();
 
-    // Section navigation (Profile, Wishlist, etc)
+    // Section navigation
     document.querySelectorAll('.profile-nav .nav-link').forEach(link => {
         link.addEventListener('click', function(e) {
             e.preventDefault();
