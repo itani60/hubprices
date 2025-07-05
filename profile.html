@@ -152,6 +152,121 @@
         @keyframes fade-out {
             to { opacity: 0; }
         }
+        /* Wishlist Modal Styling */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            overflow-y: auto;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        
+        .modal-content {
+            background-color: #fff;
+            margin: 30px auto;
+            max-width: 800px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+            animation: modal-fade-in 0.3s ease;
+        }
+        
+        @keyframes modal-fade-in {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .modal-header {
+            padding: 15px 20px;
+            border-bottom: 1px solid #eee;
+            background-color: #f9f9f9;
+        }
+        
+        .modal-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .view-all-btn {
+            color: #4285f4;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+        
+        .view-all-btn:hover {
+            color: #2b68ca;
+            text-decoration: underline;
+        }
+        
+        .remove-all-btn {
+            background-color: transparent;
+            border: 1px solid #e0e0e0;
+            color: #666;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        
+        .remove-all-btn:hover {
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        
+        .close-modal {
+            font-size: 24px;
+            color: #999;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        
+        .close-modal:hover {
+            color: #333;
+        }
+        
+        .modal-body {
+            padding: 20px;
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+        
+        /* Wishlist items in modal */
+        #wishlist-items.wishlist-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        
+        /* Empty wishlist in modal */
+        #modal-empty-wishlist {
+            text-align: center;
+            padding: 40px 20px;
+        }
+        
+        #modal-empty-wishlist i {
+            font-size: 48px;
+            color: #ccc;
+            margin-bottom: 15px;
+        }
+        
+        #modal-empty-wishlist p {
+            margin: 5px 0;
+            color: #666;
+        }
+        
+        #modal-empty-wishlist .empty-wishlist-subtext {
+            font-size: 14px;
+            color: #999;
+        }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/amazon-cognito-identity-js/6.3.3/aws-cognito-sdk.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/amazon-cognito-identity-js@6.3.3/dist/amazon-cognito-identity.min.js"></script>
@@ -596,6 +711,39 @@ function subscribeNewsletter(event) {
 }
 
 document.addEventListener('DOMContentLoaded', async function() {
+    // Wishlist Modal Functionality
+    function showWishlistModal() {
+        document.getElementById('wishlist-modal').style.display = 'block';
+        document.body.style.overflow = 'hidden'; // Prevent scrolling behind modal
+    }
+
+    function hideWishlistModal() {
+        document.getElementById('wishlist-modal').style.display = 'none';
+        document.body.style.overflow = ''; // Restore scrolling
+    }
+
+    // Set up wishlist modal event listeners
+    document.getElementById('wishlist-link').addEventListener('click', function(e) {
+        e.preventDefault();
+        showWishlistModal();
+    });
+    
+    document.querySelector('.close-modal').addEventListener('click', hideWishlistModal);
+    
+    // Close modal when clicking outside of it (on the overlay)
+    document.getElementById('wishlist-modal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            hideWishlistModal();
+        }
+    });
+    
+    // Make "View All" button in modal work
+    document.querySelector('.view-all-btn.nav-link').addEventListener('click', function(e) {
+        e.preventDefault();
+        hideWishlistModal();
+        // Trigger click on the wishlist nav link in the profile sidebar
+        document.querySelector('.profile-nav .nav-link[data-section="wishlist"]').click();
+    });
     // ---------- NOTIFICATION SYSTEM ----------
     function showNotification(message, type = 'success', title = '') {
         const notificationContainer = document.getElementById('notificationContainer');
