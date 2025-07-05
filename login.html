@@ -720,8 +720,8 @@ document.getElementById('loginForm').addEventListener('submit', async function (
         const data = await resp.json();
         console.log("Login response:", data);
 
-        // Try various key names for the token (token, accessToken, idToken)
-        const token = data.token || data.accessToken || data.idToken;
+        // Use AccessToken from tokens property
+        const token = data?.tokens?.AccessToken;
         console.log("Token from login:", token);
 
         if (!resp.ok || !token) {
