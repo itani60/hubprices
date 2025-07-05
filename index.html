@@ -306,205 +306,106 @@
     </footer>
 
 <script>
+// index.js
+
 document.addEventListener('DOMContentLoaded', function() {
-    // --- 1. CORE INITIALIZATION ---
-    // This is the main function that runs when the page is loaded.
-    function initializePage() {
-        setBodyPadding();
-        window.addEventListener('resize', setBodyPadding);
-        setupEventListeners();
-        setupHeroCarousel();
-        updateUserLoginStatus(); // Check if user is logged in
-        fetchDealsData(); // Fetch product deals
-    }
-
-    // --- 2. AUTHENTICATION & USER STATUS ---
-    // This function checks for a login token and updates the sidebar accordingly.
-    async function updateUserLoginStatus() {
-        const sidebarLogin = document.getElementById('sidebarLogin');
-        if (!sidebarLogin) return; // Exit if the login element doesn't exist
-
-        const accessToken = localStorage.getItem('accessToken');
-
-        const showLoggedOutState = () => {
-            sidebarLogin.innerHTML = `
-                <a href="login.html" class="login-btn">
-                    <i class="fas fa-sign-in-alt"></i>Login to CompareHub
-                </a>
-            `;
-        };
-
-        if (!accessToken) {
-            showLoggedOutState();
-            return;
-        }
-
-        const userInfoApiUrl = 'https://w1yg1wc8cf.execute-api.af-south-1.amazonaws.com/prod/userinfo';
-        try {
-            const response = await fetch(userInfoApiUrl, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${accessToken}` }
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({ error: 'Invalid session or API error' }));
-                throw new Error(errorData.error);
-            }
-
-            const data = await response.json();
-            const user = data.user;
-            const username = user.Username;
-            const emailAttribute = user.UserAttributes.find(attr => attr.Name === 'email');
-            const email = emailAttribute ? emailAttribute.Value : 'No email found';
-
-            sidebarLogin.innerHTML = `
-                <div class="user-greeting fade-in">
-                    <div class="user-avatar" style="cursor:pointer;" onclick="window.location.href='profile.html'">
-                        ${getInitials(username)}
-                    </div>
-                    <div class="user-info">
-                        <div class="user-name">${username}</div>
-                        <div class="user-email">${email}</div>
-                        <span class="sign-out" style="cursor:pointer;">Sign Out</span>
-                    </div>
-                </div>
-            `;
-
-            const signOutEl = sidebarLogin.querySelector('.sign-out');
-            if (signOutEl) {
-                signOutEl.addEventListener('click', (event) => {
-                    event.stopPropagation();
-                    localStorage.removeItem('accessToken');
-                    window.location.reload();
-                });
-            }
-        } catch (error) {
-            console.error("Authentication check failed:", error.message);
-            localStorage.removeItem('accessToken');
-            showLoggedOutState();
-        }
-    }
-
-    function getInitials(str) {
-        if (!str) return "";
-        let [name] = str.split('@');
-        let parts = name.split(/[.\-_]/);
-        if (parts.length > 1 && parts[0] && parts[1]) {
-            return (parts[0][0] + parts[1][0]).toUpperCase();
-        }
-        return name ? name[0].toUpperCase() : '';
-    }
-
-    // --- 3. EVENT LISTENERS & UI SETUP ---
-    function setupEventListeners() {
-        const sidebarToggle = document.querySelector('.sidebar-toggle');
-        if (sidebarToggle) sidebarToggle.addEventListener('click', toggleSidebar);
-
-        const closeSidebarBtn = document.querySelector('.close-sidebar');
-        if (closeSidebarBtn) closeSidebarBtn.addEventListener('click', closeSidebar);
-        
-        const sidebarOverlay = document.getElementById('sidebarOverlay');
-        if(sidebarOverlay) sidebarOverlay.addEventListener('click', closeSidebar);
-
-        document.querySelectorAll('.submenu-item').forEach(item => {
-            item.addEventListener('click', function() { toggleSubmenu(this); });
-        });
-        document.querySelectorAll('.menu-title').forEach(item => {
-            item.addEventListener('click', function() { goBack(this); });
-        });
-        
-        const searchForm = document.getElementById('search-form');
-        if (searchForm) searchForm.addEventListener('submit', performSearch);
-        
-        const searchInput = document.getElementById('searchInput');
-        if (searchInput) searchInput.addEventListener('input', handleSearchInput);
-        
-        const sidebarSearchInput = document.getElementById('sidebarSearchInput');
-        if(sidebarSearchInput) sidebarSearchInput.addEventListener('input', handleSidebarSearch);
-
-        const cookieAcceptBtn = document.querySelector('.accept-cookies');
-        if(cookieAcceptBtn) cookieAcceptBtn.addEventListener('click', acceptCookies);
-
-        const newsletterForm = document.querySelector('.newsletter-form');
-        if(newsletterForm) newsletterForm.addEventListener('submit', subscribeNewsletter);
-    }
-
-    // --- 4. ALL ORIGINAL FUNCTIONS FULLY INCLUDED ---
-
-    // SIDEBAR & NAVIGATION FUNCTIONS
+    // Dynamic body padding for fixed header
     function setBodyPadding() {
         const header = document.querySelector('.header');
         if (header) {
-            document.body.style.paddingTop = `${header.offsetHeight}px`;
+            const headerHeight = header.offsetHeight;
+            document.body.style.paddingTop = `${headerHeight}px`;
+        }
+    }
+    setBodyPadding();
+    window.addEventListener('resize', setBodyPadding);
+
+    const API_URL = 'https://xf9zlapr5e.execute-api.af-south-1.amazonaws.com/deals';
+
+    // HERO CAROUSEL
+    const heroCarousel = document.querySelector('.hero-carousel');
+    if (heroCarousel) {
+        const heroSlides = heroCarousel.querySelectorAll('.hero-slide');
+        const heroIndicators = heroCarousel.querySelectorAll('.hero-indicator');
+        let currentIndex = 0;
+        let interval;
+        let touchStartX = 0;
+        const slideDuration = 10000;
+
+        function showSlide(index) {
+            heroSlides.forEach((slide, i) => {
+                slide.classList.toggle('active', i === index);
+            });
+            heroIndicators.forEach((indicator, i) => {
+                indicator.classList.toggle('active', i === index);
+            });
+            currentIndex = index;
+        }
+
+        function nextSlide() {
+            showSlide((currentIndex + 1) % heroSlides.length);
+        }
+
+        function prevSlide() {
+            showSlide((currentIndex - 1 + heroSlides.length) % heroSlides.length);
+        }
+
+        function startCarousel() {
+            stopCarousel();
+            interval = setInterval(nextSlide, slideDuration);
+        }
+
+        function stopCarousel() {
+            clearInterval(interval);
+        }
+
+        if (heroSlides.length > 0) {
+            showSlide(0);
+            startCarousel();
+
+            heroIndicators.forEach((indicator, index) => {
+                indicator.addEventListener('click', () => {
+                    stopCarousel();
+                    showSlide(index);
+                    startCarousel();
+                });
+            });
+
+            const handleTouchStart = (e) => {
+                touchStartX = e.touches[0].clientX;
+                stopCarousel();
+            };
+
+            const handleTouchEnd = (e) => {
+                const touchEndX = e.changedTouches[0].clientX;
+                const diff = touchEndX - touchStartX;
+                if (Math.abs(diff) > 50) {
+                    if (diff > 0) prevSlide();
+                    else nextSlide();
+                }
+                startCarousel();
+            };
+
+            heroCarousel.addEventListener('touchstart', handleTouchStart);
+            heroCarousel.addEventListener('touchend', handleTouchEnd);
+            heroCarousel.addEventListener('mouseenter', stopCarousel);
+            heroCarousel.addEventListener('mouseleave', startCarousel);
+
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'ArrowRight') nextSlide();
+                else if (e.key === 'ArrowLeft') prevSlide();
+            });
         }
     }
 
-    function toggleSidebar() {
-        const sidebar = document.getElementById('sidebar');
-        const overlay = document.getElementById('sidebarOverlay');
-        if (sidebar) sidebar.classList.toggle('active');
-        if (overlay) overlay.classList.toggle('active');
-    };
-
-    function closeSidebar() {
-        const sidebar = document.getElementById('sidebar');
-        const overlay = document.getElementById('sidebarOverlay');
-        if (sidebar) sidebar.classList.remove('active');
-        if (overlay) overlay.classList.remove('active');
-    };
-
-    function toggleSubmenu(element) {
-        const item = element.parentElement;
-        if (item) item.classList.toggle('active');
-    };
-
-    function goBack(element) {
-        const item = element.closest('.item.active');
-        if (item) item.classList.remove('active');
-    };
-    
-    function handleSidebarSearch(e) {
-        const searchTerm = e.target.value.toLowerCase();
-        document.querySelectorAll('.menu-items .item').forEach(item => {
-            const text = item.textContent.toLowerCase();
-            item.style.display = text.includes(searchTerm) ? 'block' : 'none';
-        });
-    }
-
-    // SEARCH FUNCTIONS
-    function performSearch(event) {
-        event.preventDefault();
-        const query = document.getElementById('searchInput').value.trim();
-        if (query) {
-            alert(`Searching for: ${query}`);
-        }
-    };
-    
-    function handleSearchInput(e) {
-        const query = e.target.value.toLowerCase();
-        const suggestions = document.getElementById('searchSuggestions');
-        const querySpan = document.getElementById('searchQuery');
-        if (suggestions && query.length > 2) {
-            if(querySpan) querySpan.textContent = query;
-            suggestions.classList.add('active');
-            // Your suggestion fetch/display logic would go here
-        } else if (suggestions) {
-            suggestions.classList.remove('active');
-        }
-    }
-
-    window.selectSuggestion = function(suggestion) {
-        document.getElementById('searchInput').value = suggestion;
-        document.getElementById('searchSuggestions').classList.remove('active');
-        document.getElementById('search-form').dispatchEvent(new Event('submit'));
-    };
-
-    // DEALS & PRODUCT CAROUSEL FUNCTIONS
+    // FETCH DEALS DATA
     async function fetchDealsData() {
-        const API_URL = 'https://xf9zlapr5e.execute-api.af-south-1.amazonaws.com/deals';
         try {
             showLoadingState();
-            const response = await fetch(API_URL);
+            const response = await fetch(API_URL, {
+                method: 'GET',
+                headers: {'Content-Type': 'application/json'},
+            });
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const data = await response.json();
             processDealsData(data);
@@ -515,13 +416,19 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function processDealsData(data) {
+        // Takealot
         if (data.takealot && Array.isArray(data.takealot)) {
             const takealotSlides = createSlidesFromProducts(data.takealot, 5);
             initializeProductCarousel('takealot', takealotSlides);
+        } else if (data.takealot && data.takealot.slides) {
+            initializeProductCarousel('takealot', data.takealot.slides);
         }
+        // Amazon
         if (data.amazon && Array.isArray(data.amazon)) {
             const amazonSlides = createSlidesFromProducts(data.amazon, 5);
             initializeProductCarousel('amazon', amazonSlides);
+        } else if (data.amazon && data.amazon.slides) {
+            initializeProductCarousel('amazon', data.amazon.slides);
         }
     }
 
@@ -533,39 +440,353 @@ document.addEventListener('DOMContentLoaded', function() {
         return slides;
     }
 
+    function showLoadingState() {
+        const takealotSlider = document.getElementById('takealotSlider');
+        const amazonSlider = document.getElementById('amazonSlider');
+        const loadingHTML = `
+            <div class="loading-state">
+                <div class="spinner-container">
+                    <div class="spinner"></div>
+                    <p>Loading deals...</p>
+                </div>
+            </div>
+        `;
+        if (takealotSlider) {
+            takealotSlider.innerHTML = loadingHTML.replace('Loading deals...', 'Loading Takealot deals...');
+        }
+        if (amazonSlider) {
+            amazonSlider.innerHTML = loadingHTML.replace('Loading deals...', 'Loading Amazon deals...');
+        }
+    }
+
+    function hideLoadingState() {
+        const loadingStates = document.querySelectorAll('.loading-state');
+        loadingStates.forEach(state => state.remove());
+    }
+
+    function showErrorState(errorMessage) {
+        const takealotSlider = document.getElementById('takealotSlider');
+        const amazonSlider = document.getElementById('amazonSlider');
+        const errorHTML = `
+            <div class="error-state">
+                <h3>Failed to load deals</h3>
+                <p>${errorMessage}</p>
+                <button onclick="window.location.reload()" class="retry-btn">Retry</button>
+            </div>
+        `;
+        if (takealotSlider) takealotSlider.innerHTML = errorHTML;
+        if (amazonSlider) amazonSlider.innerHTML = errorHTML;
+    }
+
+    // PRODUCT CARD: Only "View Deal" button is clickable
+    function createProductCard(product) {
+        const imageUrl = product.img || product.imageUrl || product.image || '';
+        const productName = product.name || product.model || product.title || 'Product';
+        const currentPrice = product.currentPrice || product.price || 'N/A';
+        const originalPrice = product.originalPrice || '';
+        const discount = product.discount || '';
+        const productUrl = product.url || product.link || '#';
+        return `
+            <div class="product-card">
+                <div class="product-link">
+                    <div class="product-image">
+                        <img src="${imageUrl}" alt="${productName}" loading="lazy"
+                             onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPk5vIEltYWdlPC90ZXh0Pjwvc3ZnPg=='">
+                    </div>
+                    <div class="product-info">
+                        <h3 class="product-name">${productName}</h3>
+                        <div class="price-container">
+                            ${originalPrice ? `<span class="original-price">${originalPrice}</span>` : ''}
+                            <span class="current-price">${currentPrice}</span>
+                            ${discount ? `<span class="discount">${discount}</span>` : ''}
+                        </div>
+                        <a href="${productUrl}" target="_blank" class="view-deal-btn">View Deal</a>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
     function initializeProductCarousel(store, slidesData) {
-         // Your original implementation to create and manage product carousels
+        const slider = document.getElementById(`${store}Slider`);
+        const indicatorsContainer = document.getElementById(`${store}Indicators`);
+        if (!slider || !slidesData || slidesData.length === 0) return;
+        slider.innerHTML = '';
+        if (indicatorsContainer) indicatorsContainer.innerHTML = '';
+        slidesData.forEach((slideProducts, slideIndex) => {
+            const slide = document.createElement('div');
+            slide.className = 'slide';
+            if (slideIndex === 0) slide.classList.add('active');
+            slide.innerHTML = slideProducts.map(createProductCard).join('');
+            slider.appendChild(slide);
+            if (indicatorsContainer) {
+                const indicator = document.createElement('span');
+                indicator.className = 'indicator';
+                if (slideIndex === 0) indicator.classList.add('active');
+                indicator.addEventListener('click', () => showProductSlide(store, slideIndex));
+                indicatorsContainer.appendChild(indicator);
+            }
+        });
+        setupProductCarousel(store, slidesData.length);
     }
 
-    // HERO CAROUSEL FUNCTIONS
-    function setupHeroCarousel() {
-        const heroCarousel = document.querySelector('.hero-carousel');
-        if (!heroCarousel) return;
-        // Your full hero carousel implementation here
+    function showProductSlide(store, index) {
+        const slider = document.getElementById(`${store}Slider`);
+        const indicatorsContainer = document.getElementById(`${store}Indicators`);
+        const slides = slider.querySelectorAll('.slide');
+        const indicators = indicatorsContainer ? indicatorsContainer.querySelectorAll('.indicator') : [];
+
+        slides.forEach(slide => slide.classList.remove('active'));
+        indicators.forEach(indicator => indicator.classList.remove('active'));
+
+        if (slides[index]) slides[index].classList.add('active');
+        if (indicators[index]) indicators[index].classList.add('active');
     }
 
-    // FOOTER AND OTHER FUNCTIONS
-    function acceptCookies() {
+    function setupProductCarousel(store, totalSlides) {
+        const slider = document.getElementById(`${store}Slider`);
+        if (!slider) return;
+        
+        let currentIndex = 0;
+        let interval;
+        
+        function updateSlide(newIndex) {
+            showProductSlide(store, newIndex);
+            currentIndex = newIndex;
+        }
+        
+        function nextSlide() {
+            const nextIndex = (currentIndex + 1) % totalSlides;
+            updateSlide(nextIndex);
+        }
+
+        function prevSlide() {
+            const prevIndex = (currentIndex - 1 + totalSlides) % totalSlides;
+            updateSlide(prevIndex);
+        }
+
+        function startCarousel() {
+            stopCarousel();
+            if (totalSlides > 1) {
+                interval = setInterval(nextSlide, 14000);
+            }
+        }
+        
+        function stopCarousel() {
+            clearInterval(interval);
+        }
+        
+        updateSlide(0);
+        startCarousel();
+
+        let touchStartX = 0;
+        slider.addEventListener('touchstart', (e) => {
+            touchStartX = e.touches[0].clientX;
+            stopCarousel();
+        });
+        slider.addEventListener('touchend', (e) => {
+            const touchEndX = e.changedTouches[0].clientX;
+            const diff = touchEndX - touchStartX;
+            if (Math.abs(diff) > 50) {
+                if (diff > 0) prevSlide();
+                else nextSlide();
+            }
+            startCarousel();
+        });
+
+        slider.addEventListener('mouseenter', stopCarousel);
+        slider.addEventListener('mouseleave', startCarousel);
+    }
+
+    // SEARCH
+    window.performSearch = function(event) {
+        event.preventDefault();
+        const searchInput = document.getElementById('searchInput');
+        const query = searchInput.value.trim();
+        if (query) {
+            alert(`Searching for: ${query}`);
+        }
+    };
+
+    document.getElementById('searchInput').addEventListener('input', function(e) {
+        const query = e.target.value.toLowerCase();
+        const suggestions = document.getElementById('searchSuggestions');
+        const querySpan = document.getElementById('searchQuery');
+        if (query.length > 2) {
+            querySpan.textContent = query;
+            suggestions.classList.add('active');
+
+            const mockSuggestions = [
+                'Samsung Galaxy', 'iPhone 15', 'MacBook Pro', 'Sony TV',
+                'Washing Machine', 'Air Fryer', 'Gaming Laptop', 'Wireless Earbuds'
+            ].filter(item => item.toLowerCase().includes(query));
+            const suggestionsGrid = document.getElementById('suggestionsGrid');
+            suggestionsGrid.innerHTML = mockSuggestions
+                .map(item => `<div style="padding:8px 12px;cursor:pointer;border-radius:6px;transition:all 0.2s ease;"
+                                     onmouseover="this.style.background='#f0f0f0'"
+                                     onmouseout="this.style.background='transparent'"
+                                     onclick="selectSuggestion('${item}')">${item}</div>`)
+                .join('');
+        } else {
+            suggestions.classList.remove('active');
+        }
+    });
+
+    window.selectSuggestion = function(suggestion) {
+        document.getElementById('searchInput').value = suggestion;
+        document.getElementById('searchSuggestions').classList.remove('active');
+        document.getElementById('search-form').dispatchEvent(new Event('submit'));
+    };
+
+    document.addEventListener('click', function(e) {
+        const searchContainer = document.querySelector('.search-container');
+        if (searchContainer && !searchContainer.contains(e.target)) {
+            document.getElementById('searchSuggestions').classList.remove('active');
+        }
+    });
+
+    // SIDEBAR LOGIN (Updated to use userInfo from localStorage and avatar/profile redirect)
+    function getInitials(str) {
+        if (!str) return "";
+        let [name] = str.split('@');
+        let parts = name.split(/[.\-_]/);
+        if (parts.length > 1) return (parts[0][0] + parts[1][0]).toUpperCase();
+        return name[0].toUpperCase();
+    }
+
+    function renderSidebarLogin() {
+        const sidebarLogin = document.getElementById('sidebarLogin');
+        // Use userInfo object from localStorage
+        let userInfo = null;
+        try {
+            userInfo = JSON.parse(localStorage.getItem('userInfo'));
+        } catch (err) {}
+        if (userInfo && userInfo.Username) {
+            // Cognito user has Username and array of Attributes
+            // Get email and name from attributes
+            let email = '', name = '', avatar = '';
+            if (userInfo.Attributes && Array.isArray(userInfo.Attributes)) {
+                for (const attr of userInfo.Attributes) {
+                    if (attr.Name === 'email') email = attr.Value;
+                    if (attr.Name === 'name') name = attr.Value;
+                    if (attr.Name === 'picture') avatar = attr.Value;
+                }
+            }
+            // fallback
+            if (!name && email) name = email.split('@')[0].replace(/\./g, ' ').replace(/(^|\s)\S/g, l => l.toUpperCase());
+            if (!avatar && name) avatar = '';
+
+            sidebarLogin.innerHTML = `
+                <div class="user-greeting fade-in">
+                    <div class="user-avatar" style="cursor:pointer;">
+                        ${avatar ? `<img src="${avatar}" alt="Avatar">` : getInitials(name || email || userInfo.Username)}
+                    </div>
+                    <div class="user-info">
+                        <div class="user-name">${name || userInfo.Username}</div>
+                        <div class="user-email">${email || ''}</div>
+                        <span class="sign-out" style="cursor:pointer;">Sign Out</span>
+                    </div>
+                </div>
+            `;
+            const avatarEl = sidebarLogin.querySelector('.user-avatar');
+            if (avatarEl) avatarEl.addEventListener('click', function(event) {
+                event.preventDefault();
+                event.stopPropagation();
+                window.location.href = "profile.html";
+            });
+            const signOutEl = sidebarLogin.querySelector('.sign-out');
+            if (signOutEl) signOutEl.addEventListener('click', function(event) {
+                event.preventDefault();
+                event.stopPropagation();
+                localStorage.removeItem('authToken');
+                localStorage.removeItem('userInfo');
+                window.location.href = "index.html";
+            });
+        } else {
+            sidebarLogin.innerHTML = `
+                <a href="login.html" class="login-btn">
+                    <i class="fas fa-sign-in-alt"></i>Login to CompareHub
+                </a>
+            `;
+        }
+    }
+
+    // SIDEBAR
+    window.toggleSidebar = function() {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebarOverlay');
+        sidebar.classList.toggle('active');
+        overlay.classList.toggle('active');
+    };
+
+    window.closeSidebar = function() {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebarOverlay');
+        sidebar.classList.remove('active');
+        overlay.classList.remove('active');
+    };
+
+    window.toggleSubmenu = function(element) {
+        const item = element.parentElement;
+        const isActive = item.classList.contains('active');
+        document.querySelectorAll('.item.active').forEach(activeItem => {
+            if (activeItem !== item) activeItem.classList.remove('active');
+        });
+        item.classList.toggle('active');
+        if (!isActive) {
+            const submenuItems = item.querySelectorAll('.submenu .item');
+            submenuItems.forEach((submenuItem, index) => {
+                setTimeout(() => {
+                    submenuItem.classList.add('slide-in');
+                }, index * 50);
+            });
+        }
+    };
+
+    window.goBack = function(element) {
+        const item = element.closest('.item');
+        item.classList.remove('active');
+    };
+
+    document.getElementById('sidebarSearchInput').addEventListener('input', function(e) {
+        const searchTerm = e.target.value.toLowerCase();
+        const menuItems = document.querySelectorAll('.menu-items .item');
+        menuItems.forEach(item => {
+            const text = item.textContent.toLowerCase();
+            if (text.includes(searchTerm)) {
+                item.style.display = 'block';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    });
+
+    renderSidebarLogin();
+
+    document.addEventListener('click', function(e) {
+        const sidebar = document.getElementById('sidebar');
+        const toggle = document.querySelector('.sidebar-toggle');
+        const overlay = document.getElementById('sidebarOverlay');
+        if (sidebar && !sidebar.contains(e.target) && e.target !== toggle && e.target !== overlay) {
+            closeSidebar();
+        }
+    });
+
+    window.acceptCookies = function() {
         const cookieNotice = document.querySelector('.cookie-notice');
         if (cookieNotice) cookieNotice.style.display = 'none';
-    }
+    };
 
-    function subscribeNewsletter(event) {
+    window.subscribeNewsletter = function(event) {
         event.preventDefault();
         const input = event.target.querySelector('input[type="email"]');
         if (input && input.value) {
             alert('Thank you for subscribing!');
             input.value = '';
         }
-    }
-    
-    // Placeholder functions for loading states if you need them
-    function showLoadingState() {}
-    function hideLoadingState() {}
-    function showErrorState(message) { console.error(message); }
+    };
 
-    // --- 5. KICK OFF THE PAGE ---
-    initializePage();
+    fetchDealsData();
 });
 </script>
 
