@@ -391,7 +391,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 const data = await resp.json();
                 throw new Error(data.error || "Failed to update profile name");
             }
-            // Optionally update local userInfo
+            // Update local userInfo
             await fetchUserInfoFromAPI(authToken);
             return true;
         } catch (err) {
@@ -482,7 +482,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     });
 
-    // Dummy handlers for other forms
+    // Dummy handler for settings form
     document.getElementById('settings-form').addEventListener('submit', function(e){
         e.preventDefault();
         alert('Settings saved! (Demo)');
