@@ -374,6 +374,18 @@ document.addEventListener('DOMContentLoaded', async function() {
     // --- API Calls ---
     async function updateProfileName(firstName, lastName) {
         const authToken = localStorage.getItem('authToken');
+        // Validate: At least one name field must be non-empty
+        if (!firstName && !lastName) {
+            alert('Please enter at least a first or last name to update your profile.');
+            return false;
+        }
+        // Build payload with only non-empty fields
+        const payload = {};
+        if (firstName) payload.given_name = firstName;
+        if (lastName) payload.family_name = lastName;
+        // For display, you can keep the combined name if either is provided
+        payload.name = [firstName, lastName].filter(Boolean).join(' ').trim();
+
         try {
             const resp = await fetch("https://w1yg1wc8cf.execute-api.af-south-1.amazonaws.com/prod/update-profile", {
                 method: "POST",
@@ -381,14 +393,11 @@ document.addEventListener('DOMContentLoaded', async function() {
                     "Content-Type": "application/json",
                     "Authorization": `Bearer ${authToken}`
                 },
-                body: JSON.stringify({
-                    given_name: firstName,
-                    family_name: lastName,
-                    name: (firstName + (lastName ? " " + lastName : "")).trim()
-                })
+                body: JSON.stringify(payload)
             });
+            let data = {};
+            try { data = await resp.json(); } catch (e) {}
             if (!resp.ok) {
-                const data = await resp.json();
                 throw new Error(data.error || "Failed to update profile name");
             }
             // Update local userInfo
