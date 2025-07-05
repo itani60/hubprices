@@ -7,6 +7,152 @@
     <link rel="stylesheet" href="profile.css">
     <link rel="stylesheet" href="index.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        /* Enhanced Wishlist Search Styling */
+        .wishlist-search-wrapper {
+            margin-bottom: 20px;
+        }
+        
+        .wishlist-search-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+            max-width: 500px;
+            margin: 0 auto;
+            border-radius: 30px;
+            background-color: #f5f5f5;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .wishlist-search-container:focus-within {
+            box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+            background-color: #fff;
+        }
+        
+        .search-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 15px;
+            color: #666;
+        }
+        
+        .wishlist-search-input {
+            flex: 1;
+            border: none;
+            padding: 12px 15px;
+            font-size: 16px;
+            background: transparent;
+            outline: none;
+        }
+        
+        .clear-search-btn {
+            background: none;
+            border: none;
+            color: #999;
+            padding: 0 15px;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        
+        .clear-search-btn:hover {
+            color: #333;
+        }
+        
+        /* Notification System */
+        .notification-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            max-width: 350px;
+        }
+        
+        .notification {
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            margin-bottom: 10px;
+            overflow: hidden;
+            transform: translateX(120%);
+            animation: slide-in 0.4s forwards;
+        }
+        
+        .notification.success {
+            border-left: 4px solid #4CAF50;
+        }
+        
+        .notification.error {
+            border-left: 4px solid #F44336;
+        }
+        
+        .notification-content {
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .notification-icon {
+            margin-right: 15px;
+            font-size: 20px;
+        }
+        
+        .notification.success .notification-icon {
+            color: #4CAF50;
+        }
+        
+        .notification.error .notification-icon {
+            color: #F44336;
+        }
+        
+        .notification-message {
+            flex: 1;
+        }
+        
+        .notification-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .notification-close {
+            background: none;
+            border: none;
+            color: #999;
+            cursor: pointer;
+            font-size: 16px;
+            margin-left: 10px;
+        }
+        
+        .notification-progress {
+            height: 3px;
+            background-color: #e0e0e0;
+        }
+        
+        .notification-progress-bar {
+            height: 100%;
+            width: 100%;
+            background-color: #4CAF50;
+            animation: progress 3s linear forwards;
+        }
+        
+        .notification.error .notification-progress-bar {
+            background-color: #F44336;
+        }
+        
+        @keyframes slide-in {
+            to { transform: translateX(0); }
+        }
+        
+        @keyframes progress {
+            to { width: 0%; }
+        }
+        
+        @keyframes fade-out {
+            to { opacity: 0; }
+        }
+    </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/amazon-cognito-identity-js/6.3.3/aws-cognito-sdk.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/amazon-cognito-identity-js@6.3.3/dist/amazon-cognito-identity.min.js"></script>
     <script src="https://sdk.amazonaws.com/js/aws-sdk-2.1.24.min.js"></script>
@@ -51,12 +197,143 @@
                 <h3>Browse Categories</h3>
                 <button class="close-sidebar" onclick="closeSidebar()">&times;</button>
             </div>
-            <div class="menu-content">
-                <!-- [SIDEBAR MENU, UNCHANGED FROM YOUR INPUT, PASTE FULL BLOCK HERE FOR YOUR FINAL USAGE] -->
+           <div class="menu-content">
                 <ul class="menu-items">
-                    <!-- ... all your <li class="item"> ... structure ... -->
-                    <!-- [PASTE YOUR PROVIDED SIDEBAR MENU CONTENT HERE] -->
-                    <!-- ... content omitted for brevity ... -->
+                    <li class="item">
+                        <div class="submenu-item" onclick="toggleSubmenu(this)">
+                            <span><i class=""></i> Cellphones & Tablets</span>
+                            <i class="fa-solid fa-chevron-right"></i>
+                        </div>
+                        <ul class="menu-items submenu">
+                            <div class="menu-title" onclick="goBack(this)"><i class="fa-solid fa-chevron-left"></i> Cellphones & Tablets</div>
+                            <li class="item"><a href="#smartphones">Smartphones</a></li>
+                            <li class="item"><a href="#tablets">Tablets</a></li>
+                            <li class="item"><a href="#phone-accessories">Accessories</a></li>
+                        </ul>
+                    </li>
+
+                       <li class="item">
+                         <div class="submenu-item" onclick="toggleSubmenu(this)">
+                            <span><i class=""></i>Latops</span>
+                            <i class="fa-solid fa-chevron-right"></i>
+                        </div>
+                        <ul class="menu-items submenu">
+                            <div class="menu-title" onclick="goBack(this)"><i class="fa-solid fa-chevron-left"></i> Laptops & Accessories</div>
+                            <li class="item"><a href="#printers">Windows Laptops</a></li>
+                            <li class="item"><a href="#monitors">Chromebooks</a></li>
+                            <li class="item"><a href="#keyboards-mice">Macbooks</a></li>
+                            <li class="item"><a href="#storage-devices">Gaming Laptops</a></li>
+                            <li class="item"><a href="#computer-speakers">Accessories</a></li>
+                         
+                        </ul>
+                    </li>
+
+
+                    <li class="item">
+                         <div class="submenu-item" onclick="toggleSubmenu(this)">
+                            <span><i class=""></i> Computers & Accessories</span>
+                            <i class="fa-solid fa-chevron-right"></i>
+                        </div>
+                        <ul class="menu-items submenu">
+                            <div class="menu-title" onclick="goBack(this)"><i class="fa-solid fa-chevron-left"></i> Computers & Accessories</div>
+                            <li class="item"><a href="#printers">Printers</a></li>
+                            <li class="item"><a href="#monitors">Monitors</a></li>
+                            <li class="item"><a href="#keyboards-mice">Keyboards & Mice</a></li>
+                            <li class="item"><a href="#storage-devices">Storage Devices</a></li>
+                            <li class="item"><a href="#computer-speakers">Computer Speakers</a></li>
+                            <li class="item"><a href="#webcams">Webcams</a></li>
+                        </ul>
+                    </li>
+                    <li class="item">
+                        <div class="submenu-item" onclick="toggleSubmenu(this)">
+                            <span><i class=""></i> TV & Streaming</span>
+                            <i class="fa-solid fa-chevron-right"></i>
+                        </div>
+                        <ul class="menu-items submenu">
+                            <div class="menu-title" onclick="goBack(this)"><i class="fa-solid fa-chevron-left"></i> TV & Streaming</div>
+                            <li class="item"><a href="#televisions">Televisions</a></li>
+                            <li class="item"><a href="#streaming-devices">Streaming Devices</a></li>
+                            <li class="item"><a href="#tv-mounts">TV Mounts</a></li>
+                            <li class="item"><a href="#remote-controls">Remote Controls</a></li>
+                        </ul>
+                    </li>
+
+                       <li class="item">
+                         <div class="submenu-item" onclick="toggleSubmenu(this)">
+                            <span><i class=""></i>Audio</span>
+                            <i class="fa-solid fa-chevron-right"></i>
+                        </div>
+                        <ul class="menu-items submenu">
+                            <div class="menu-title" onclick="goBack(this)"><i class="fa-solid fa-chevron-left"></i> Audio</div>
+                            <li class="item"><a href="#printers">Soundbars</a></li>
+                            <li class="item"><a href="#monitors">Earbuds</a></li>
+                            <li class="item"><a href="#keyboards-mice">Headphones</a></li>
+                            <li class="item"><a href="#storage-devices">Bluetooth Speakers</a></li>
+                            <li class="item"><a href="#computer-speakers">Home Audio Systems</a></li>
+                         
+                        </ul>
+                    </li>
+
+                        <li class="item">
+                         <div class="submenu-item" onclick="toggleSubmenu(this)">
+                            <span><i class=""></i>Wearables Devices</span>
+                            <i class="fa-solid fa-chevron-right"></i>
+                        </div>
+                        <ul class="menu-items submenu">
+                            <div class="menu-title" onclick="goBack(this)"><i class="fa-solid fa-chevron-left"></i> Wearables Devices</div>
+                            <li class="item"><a href="#printers">Smartwatches</a></li>
+                            <li class="item"><a href="#monitors">Fitness Trackers</a></li>
+                            <li class="item"><a href="#keyboards-mice">VR Headsets</a></li>
+                           
+                        </ul>
+                    </li>
+
+
+                        <li class="item">
+                         <div class="submenu-item" onclick="toggleSubmenu(this)">
+                            <span><i class=""></i>Consoles</span>
+                            <i class="fa-solid fa-chevron-right"></i>
+                        </div>
+                        <ul class="menu-items submenu">
+                            <div class="menu-title" onclick="goBack(this)"><i class="fa-solid fa-chevron-left"></i> Consoles</div>
+                            <li class="item"><a href="#printers">Consoles</a></li>
+                            <li class="item"><a href="#monitors">Console Accessories</a></li>
+                           
+                         
+                        </ul>
+                    </li>
+
+
+
+
+
+
+
+
+                     <li class="item">
+                        <div class="submenu-item" onclick="toggleSubmenu(this)">
+                            <span><i class=""></i> Appliances</span>
+                            <i class="fa-solid fa-chevron-right"></i>
+                        </div>
+                        <ul class="menu-items submenu">
+                            <div class="menu-title" onclick="goBack(this)"><i class="fa-solid fa-chevron-left"></i> Appliances</div>
+                            <li class="item">
+                                <div class="submenu-item" onclick="toggleSubmenu(this)">
+                                    <span>Kitchen Appliances</span>
+                                    <i class="fa-solid fa-chevron-right"></i>
+                                </div>
+                                <ul class="menu-items submenu">
+                                    <div class="menu-title" onclick="goBack(this)"><i class="fa-solid fa-chevron-left"></i> Kitchen Appliances</div>
+                                    <li class="item"><a href="#refrigerators">Refrigerators</a></li>
+                                    <li class="item"><a href="#microwaves">Microwaves</a></li>
+                                    <li class="item"><a href="#coffee-machines">Coffee Machines</a></li>
+                                    <li class="item"><a href="#blenders">Blenders</a></li>
+                                </ul>
+                            </li>
+                            <li class="item"><a href="#vacuum-cleaners">Vacuum Cleaners</a></li>
+                            <li class="item"><a href="#air-conditioners">Air Conditioners</a></li>
+                        </ul>
+                    </li>
                 </ul>
             </div>
             <div class="sidebar-footer">
@@ -101,10 +378,6 @@
                                     <div class="stat-label">Wishlist Items</div>
                                 </div>
                                 <div class="stat-card">
-                                    <div class="stat-value" id="totalSavings">R0</div>
-                                    <div class="stat-label">Total Savings</div>
-                                </div>
-                                <div class="stat-card">
                                     <div class="stat-value" id="alertsCount">0</div>
                                     <div class="stat-label">Price Alerts</div>
                                 </div>
@@ -133,6 +406,9 @@
                         <div id="wishlist" class="profile-section">
                             <div class="wishlist-search-wrapper">
                                 <div class="wishlist-search-container">
+                                    <div class="search-icon">
+                                        <i class="fas fa-search"></i>
+                                    </div>
                                     <input type="text" id="wishlistSearch" placeholder="Search wishlist..." class="wishlist-search-input">
                                     <button id="clearWishlistSearch" class="clear-search-btn" style="display: none;">
                                         <i class="fas fa-times"></i>
@@ -195,6 +471,9 @@
     </div>
 
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+    
+    <!-- Notification Container -->
+    <div class="notification-container" id="notificationContainer"></div>
     
     <!-- Wishlist Modal -->
     <div id="wishlist-modal" class="modal">
@@ -277,7 +556,113 @@
 <script>
 
 
+// Basic UI functions
+function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('active');
+    document.getElementById('sidebarOverlay').classList.toggle('active');
+}
+
+function closeSidebar() {
+    document.getElementById('sidebar').classList.remove('active');
+    document.getElementById('sidebarOverlay').classList.remove('active');
+}
+
+function toggleSubmenu(element) {
+    const submenu = element.nextElementSibling;
+    submenu.classList.toggle('active');
+}
+
+function goBack(element) {
+    const submenu = element.parentElement;
+    submenu.classList.remove('active');
+}
+
+function acceptCookies() {
+    document.querySelector('.cookie-notice').style.display = 'none';
+    // Set cookie acceptance in localStorage
+    localStorage.setItem('cookiesAccepted', 'true');
+}
+
+function performSearch(event) {
+    event.preventDefault();
+    // This would normally search the site, but for demo purposes we'll just show a notification
+    showNotification('Search functionality is a demo', 'success', 'Search');
+}
+
+function subscribeNewsletter(event) {
+    event.preventDefault();
+    // This would normally subscribe to newsletter, but for demo purposes we'll just show a notification
+    showNotification('Newsletter subscription is a demo', 'success', 'Newsletter');
+}
+
 document.addEventListener('DOMContentLoaded', async function() {
+    // ---------- NOTIFICATION SYSTEM ----------
+    function showNotification(message, type = 'success', title = '') {
+        const notificationContainer = document.getElementById('notificationContainer');
+        
+        // Create notification elements
+        const notification = document.createElement('div');
+        notification.className = `notification ${type}`;
+        
+        const content = document.createElement('div');
+        content.className = 'notification-content';
+        
+        const icon = document.createElement('div');
+        icon.className = 'notification-icon';
+        icon.innerHTML = type === 'success' ? '<i class="fas fa-check-circle"></i>' : '<i class="fas fa-exclamation-circle"></i>';
+        
+        const messageEl = document.createElement('div');
+        messageEl.className = 'notification-message';
+        
+        if (title) {
+            const titleEl = document.createElement('div');
+            titleEl.className = 'notification-title';
+            titleEl.textContent = title;
+            messageEl.appendChild(titleEl);
+        }
+        
+        const messageText = document.createElement('div');
+        messageText.textContent = message;
+        messageEl.appendChild(messageText);
+        
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'notification-close';
+        closeBtn.innerHTML = '&times;';
+        closeBtn.addEventListener('click', () => {
+            notification.style.animation = 'fade-out 0.3s forwards';
+            setTimeout(() => {
+                notification.remove();
+            }, 300);
+        });
+        
+        content.appendChild(icon);
+        content.appendChild(messageEl);
+        content.appendChild(closeBtn);
+        
+        const progress = document.createElement('div');
+        progress.className = 'notification-progress';
+        
+        const progressBar = document.createElement('div');
+        progressBar.className = 'notification-progress-bar';
+        
+        progress.appendChild(progressBar);
+        
+        notification.appendChild(content);
+        notification.appendChild(progress);
+        
+        notificationContainer.appendChild(notification);
+        
+        // Auto-remove after animation completes
+        setTimeout(() => {
+            notification.style.animation = 'fade-out 0.3s forwards';
+            setTimeout(() => {
+                notification.remove();
+            }, 300);
+        }, 3000);
+        
+        return notification;
+    }
+    
     // ---------- USER INFO HELPERS (Handles Cognito and Google users) ----------
     function getAttribute(userInfo, attrName) {
         const attrs = userInfo.Attributes || userInfo.UserAttributes || [];
@@ -379,19 +764,19 @@ document.addEventListener('DOMContentLoaded', async function() {
         } catch (e) {}
         const googleUser = userInfo && (userInfo.provider === 'Google' || userInfo.sub || userInfo.userId);
         if (googleUser) {
-            alert("Google users cannot update their name via this form.");
+            showNotification("Google users cannot update their name via this form.", "error", "Update Failed");
             return false;
         }
 
         const authToken = localStorage.getItem('authToken');
         if (!authToken) {
-            alert("Session expired. Please log in again.");
+            showNotification("Session expired. Please log in again.", "error", "Authentication Error");
             window.location.href = "login.html";
             return false;
         }
         // Validate: At least one name field must be non-empty
         if (!firstName && !lastName) {
-            alert('Please enter at least a first or last name to update your profile.');
+            showNotification('Please enter at least a first or last name to update your profile.', 'error', 'Validation Error');
             return false;
         }
         // Build payload with only non-empty fields
@@ -418,7 +803,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             // You may want to re-fetch userInfo here from the server
             return true;
         } catch (err) {
-            alert(err.message);
+            showNotification(err.message, 'error', 'API Error');
             return false;
         }
     }
@@ -443,7 +828,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             }
             return true;
         } catch (err) {
-            alert(err.message);
+            showNotification(err.message, 'error', 'Password Update Error');
             return false;
         }
     }
@@ -481,7 +866,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         const result = await updateProfileName(firstName, lastName);
         if(result) {
             await loadAndRenderProfile();
-            alert('Profile updated!');
+            showNotification('Profile updated!', 'success', 'Success');
         }
     });
 
@@ -492,12 +877,12 @@ document.addEventListener('DOMContentLoaded', async function() {
         const newPassword = document.getElementById('newPassword').value;
         const confirmPassword = document.getElementById('confirmPassword').value;
         if(newPassword !== confirmPassword) {
-            alert("Passwords do not match!");
+            showNotification("Passwords do not match!", "error", "Validation Error");
             return;
         }
         const result = await updatePassword(oldPassword, newPassword);
         if(result) {
-            alert('Password changed!');
+            showNotification('Password changed!', 'success', 'Success');
             // Optionally, clear form fields here:
             document.getElementById('currentPassword').value = '';
             document.getElementById('newPassword').value = '';
@@ -508,10 +893,9 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Dummy handler for settings form
     document.getElementById('settings-form').addEventListener('submit', function(e){
         e.preventDefault();
-        alert('Settings saved! (Demo)');
+        showNotification('Settings saved! (Demo)', 'success', 'Settings Updated');
     });
 });
 </script>
 </body>
 </html>
-
