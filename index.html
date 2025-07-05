@@ -322,15 +322,24 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     const API_URL = 'https://xf9zlapr5e.execute-api.af-south-1.amazonaws.com/deals';
 
-    // ---------- USER INFO HELPERS (Handles both Attributes/UserAttributes etc) ----------
+    // ---------- USER INFO HELPERS (Handles Cognito and Google users) ----------
     function getAttribute(userInfo, attrName) {
+        // Cognito user: Attributes/UserAttributes array
         const attrs = userInfo.Attributes || userInfo.UserAttributes || [];
-        if (!Array.isArray(attrs)) return '';
-        const found = attrs.find(attr => attr.Name === attrName);
-        return found ? found.Value : '';
+        if (Array.isArray(attrs)) {
+            const found = attrs.find(attr => attr.Name === attrName);
+            if (found) return found.Value;
+        }
+        // Google user: direct property
+        if (userInfo[attrName]) return userInfo[attrName];
+        if (attrName === 'sub' && userInfo.sub) return userInfo.sub;
+        return '';
     }
 
     function getDisplayName(userInfo) {
+        // Google user: name field
+        if (userInfo.name) return userInfo.name;
+        // Cognito: first, last, name, email
         let firstName = getAttribute(userInfo, 'given_name');
         let lastName = getAttribute(userInfo, 'family_name');
         let name = getAttribute(userInfo, 'name');
@@ -338,10 +347,11 @@ document.addEventListener('DOMContentLoaded', async function() {
         if (firstName) return firstName + (lastName ? ' ' + lastName : '');
         if (name) return name;
         if (email) return email.split('@')[0].replace(/[.\-_]/g, ' ').replace(/(^|\s)\S/g, l => l.toUpperCase());
-        return userInfo.Username;
+        return userInfo.Username || '';
     }
 
     function getAvatarInitials(userInfo) {
+        if (userInfo.picture) return ""; // Show avatar photo, not initials
         const displayName = getDisplayName(userInfo);
         if (displayName) {
             const parts = displayName.split(' ');
@@ -381,8 +391,9 @@ document.addEventListener('DOMContentLoaded', async function() {
             userInfo = JSON.parse(localStorage.getItem('userInfo'));
         } catch (err) { userInfo = null; }
 
+        // Try fetching profile if missing/empty
         let attrs = (userInfo && (userInfo.Attributes || userInfo.UserAttributes)) || [];
-        let missingProfile = !userInfo || !Array.isArray(attrs) || attrs.length === 0;
+        let missingProfile = !userInfo || (!userInfo.picture && (!Array.isArray(attrs) || attrs.length === 0));
 
         if (missingProfile && authToken) {
             userInfo = await fetchUserInfoFromAPI(authToken);
