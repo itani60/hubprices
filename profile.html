@@ -286,7 +286,6 @@ document.addEventListener('DOMContentLoaded', async function() {
         return found ? found.Value : '';
     }
 
-    // Display name: given + family, else name, else email username, else UUID
     function getDisplayName(userInfo) {
         let firstName = getAttribute(userInfo, 'given_name');
         let lastName = getAttribute(userInfo, 'family_name');
@@ -372,6 +371,60 @@ document.addEventListener('DOMContentLoaded', async function() {
         document.getElementById('email').value = email || '';
     }
 
+    // --- API Calls ---
+    async function updateProfileName(firstName, lastName) {
+        const authToken = localStorage.getItem('authToken');
+        try {
+            const resp = await fetch("https://w1yg1wc8cf.execute-api.af-south-1.amazonaws.com/prod/update-profile", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${authToken}`
+                },
+                body: JSON.stringify({
+                    given_name: firstName,
+                    family_name: lastName,
+                    name: (firstName + (lastName ? " " + lastName : "")).trim()
+                })
+            });
+            if (!resp.ok) {
+                const data = await resp.json();
+                throw new Error(data.error || "Failed to update profile name");
+            }
+            // Optionally update local userInfo
+            await fetchUserInfoFromAPI(authToken);
+            return true;
+        } catch (err) {
+            alert(err.message);
+            return false;
+        }
+    }
+
+    async function updatePassword(oldPassword, newPassword) {
+        const authToken = localStorage.getItem('authToken');
+        try {
+            const resp = await fetch("https://w1yg1wc8cf.execute-api.af-south-1.amazonaws.com/prod/change-password", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${authToken}`
+                },
+                body: JSON.stringify({
+                    oldPassword,
+                    newPassword
+                })
+            });
+            const data = await resp.json();
+            if (!resp.ok) {
+                throw new Error(data.error || "Failed to change password");
+            }
+            return true;
+        } catch (err) {
+            alert(err.message);
+            return false;
+        }
+    }
+
     await loadAndRenderProfile();
 
     // Section navigation
@@ -397,18 +450,42 @@ document.addEventListener('DOMContentLoaded', async function() {
         });
     }
 
-    // Dummy handlers for other forms (update, change password, etc)
-    document.getElementById('profile-form').addEventListener('submit', function(e){
+    // --- Update name
+    document.getElementById('profile-form').addEventListener('submit', async function(e){
         e.preventDefault();
-        alert('Profile updated! (Demo)');
+        const firstName = document.getElementById('firstName').value.trim();
+        const lastName = document.getElementById('lastName').value.trim();
+        const result = await updateProfileName(firstName, lastName);
+        if(result) {
+            await loadAndRenderProfile();
+            alert('Profile updated!');
+        }
     });
+
+    // --- Update password
+    document.getElementById('privacy-form').addEventListener('submit', async function(e){
+        e.preventDefault();
+        const oldPassword = document.getElementById('currentPassword').value;
+        const newPassword = document.getElementById('newPassword').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+        if(newPassword !== confirmPassword) {
+            alert("Passwords do not match!");
+            return;
+        }
+        const result = await updatePassword(oldPassword, newPassword);
+        if(result) {
+            alert('Password changed!');
+            // Optionally, clear form fields here:
+            document.getElementById('currentPassword').value = '';
+            document.getElementById('newPassword').value = '';
+            document.getElementById('confirmPassword').value = '';
+        }
+    });
+
+    // Dummy handlers for other forms
     document.getElementById('settings-form').addEventListener('submit', function(e){
         e.preventDefault();
         alert('Settings saved! (Demo)');
-    });
-    document.getElementById('privacy-form').addEventListener('submit', function(e){
-        e.preventDefault();
-        alert('Password changed! (Demo)');
     });
 });
 </script>
