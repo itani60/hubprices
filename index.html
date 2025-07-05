@@ -308,7 +308,7 @@
 <script>
 // index.js
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     // Dynamic body padding for fixed header
     function setBodyPadding() {
         const header = document.querySelector('.header');
@@ -540,7 +540,7 @@ document.addEventListener('DOMContentLoaded', function() {
         indicators.forEach(indicator => indicator.classList.remove('active'));
 
         if (slides[index]) slides[index].classList.add('active');
-        if (indicators[index]) indicators.classList.add('active');
+        if (indicators[index]) indicators[index].classList.add('active');
     }
 
     function setupProductCarousel(store, totalSlides) {
@@ -645,70 +645,137 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // SIDEBAR LOGIN (Updated to use userInfo from localStorage and avatar/profile redirect)
-    function getInitials(str) {
-        if (!str) return "";
-        let [name] = str.split('@');
-        let parts = name.split(/[.\-_]/);
-        if (parts.length > 1) return (parts[0][0] + parts[1][0]).toUpperCase();
-        return name[0].toUpperCase();
+    // --- SIDEBAR LOGIN (with fallback API userinfo fetch) ---
+    async function fetchUserInfoFromAPI(token) {
+        try {
+            const resp = await fetch("https://w1yg1wc8cf.execute-api.af-south-1.amazonaws.com/prod/userinfo", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                }
+            });
+            if (!resp.ok) throw new Error("Failed to fetch user info from API");
+            const data = await resp.json();
+            if (data && data.user) {
+                localStorage.setItem('userInfo', JSON.stringify(data.user));
+                return data.user;
+            }
+        } catch (e) {
+            console.warn("API userinfo fetch failed:", e);
+        }
+        return null;
     }
 
-    function renderSidebarLogin() {
+    function getAttribute(userInfo, attrName) {
+        if (!userInfo || !userInfo.Attributes) return '';
+        const found = userInfo.Attributes.find(attr => attr.Name === attrName);
+        return found ? found.Value : '';
+    }
+
+    function getDisplayName(userInfo) {
+        let name = getAttribute(userInfo, 'name');
+        let firstName = getAttribute(userInfo, 'given_name');
+        let lastName = getAttribute(userInfo, 'family_name');
+        const email = getAttribute(userInfo, 'email');
+        // If Cognito 'name' is a full name, split it
+        if (!firstName && !lastName && name) {
+            const parts = name.trim().split(' ');
+            if (parts.length > 1) {
+                firstName = parts[0];
+                lastName = parts.slice(1).join(' ');
+            } else {
+                firstName = name;
+                lastName = '';
+            }
+        }
+        // If no name, fallback to email
+        if (!firstName && email) {
+            firstName = email.split('@')[0].replace(/\./g, ' ').replace(/(^|\s)\S/g, l => l.toUpperCase());
+        }
+        return (firstName || '') + (lastName ? ' ' + lastName : '');
+    }
+
+    function getAvatarInitials(name, email) {
+        if (name) {
+            const parts = name.trim().split(' ');
+            if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+            return name[0].toUpperCase();
+        }
+        if (email) {
+            const user = email.split('@')[0];
+            if (user.includes('.')) {
+                const uParts = user.split('.');
+                return (uParts[0][0] + uParts[1][0]).toUpperCase();
+            }
+            return user[0].toUpperCase();
+        }
+        return 'U';
+    }
+
+    async function renderSidebarLogin() {
         const sidebarLogin = document.getElementById('sidebarLogin');
-        // Use userInfo object from localStorage
         let userInfo = null;
+        let authToken = localStorage.getItem('authToken');
         try {
             userInfo = JSON.parse(localStorage.getItem('userInfo'));
-        } catch (err) {}
-        if (userInfo && userInfo.Username) {
-            // Cognito user has Username and array of Attributes
-            // Get email and name from attributes
-            let email = '', name = '', avatar = '';
-            if (userInfo.Attributes && Array.isArray(userInfo.Attributes)) {
-                for (const attr of userInfo.Attributes) {
-                    if (attr.Name === 'email') email = attr.Value;
-                    if (attr.Name === 'name') name = attr.Value;
-                    if (attr.Name === 'picture') avatar = attr.Value;
-                }
-            }
-            // fallback: use email username if no display name
-            if (!name && email) name = email.split('@')[0].replace(/\./g, ' ').replace(/(^|\s)\S/g, l => l.toUpperCase());
-            if (!avatar && name) avatar = '';
+        } catch (err) { userInfo = null; }
 
-            sidebarLogin.innerHTML = `
-                <div class="user-greeting fade-in">
-                    <div class="user-avatar" style="cursor:pointer;">
-                        ${avatar ? `<img src="${avatar}" alt="Avatar">` : getInitials(name || email || userInfo.Username)}
-                    </div>
-                    <div class="user-info">
-                        <div class="user-name">${name || userInfo.Username}</div>
-                        <div class="user-email">${email || ''}</div>
-                        <span class="sign-out" style="cursor:pointer;">Sign Out</span>
-                    </div>
-                </div>
-            `;
-            const avatarEl = sidebarLogin.querySelector('.user-avatar');
-            if (avatarEl) avatarEl.addEventListener('click', function(event) {
-                event.preventDefault();
-                event.stopPropagation();
-                window.location.href = "profile.html";
-            });
-            const signOutEl = sidebarLogin.querySelector('.sign-out');
-            if (signOutEl) signOutEl.addEventListener('click', function(event) {
-                event.preventDefault();
-                event.stopPropagation();
-                localStorage.removeItem('authToken');
-                localStorage.removeItem('userInfo');
-                window.location.href = "index.html";
-            });
-        } else {
+        let missingProfile =
+            !userInfo ||
+            !userInfo.Attributes ||
+            userInfo.Attributes.length === 0 ||
+            (!getAttribute(userInfo, "name") &&
+             !getAttribute(userInfo, "given_name") &&
+             !getAttribute(userInfo, "email"));
+
+        // If missing or broken, try to fetch from API
+        if (missingProfile && authToken) {
+            userInfo = await fetchUserInfoFromAPI(authToken);
+        }
+
+        // If still not present, show login button
+        if (!userInfo || !authToken) {
             sidebarLogin.innerHTML = `
                 <a href="login.html" class="login-btn">
                     <i class="fas fa-sign-in-alt"></i>Login to CompareHub
                 </a>
             `;
+            return;
         }
+
+        let email = getAttribute(userInfo, 'email');
+        let name = getDisplayName(userInfo);
+        let avatar = getAttribute(userInfo, 'picture');
+        if (!avatar && name) avatar = '';
+        const initials = getAvatarInitials(name, email);
+
+        sidebarLogin.innerHTML = `
+            <div class="user-greeting fade-in">
+                <div class="user-avatar" style="cursor:pointer;">
+                    ${avatar ? `<img src="${avatar}" alt="Avatar">` : initials}
+                </div>
+                <div class="user-info">
+                    <div class="user-name">${name}</div>
+                    <div class="user-email">${email || ''}</div>
+                    <span class="sign-out" style="cursor:pointer;">Sign Out</span>
+                </div>
+            </div>
+        `;
+        const avatarEl = sidebarLogin.querySelector('.user-avatar');
+        if (avatarEl) avatarEl.addEventListener('click', function(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            window.location.href = "profile.html";
+        });
+        const signOutEl = sidebarLogin.querySelector('.sign-out');
+        if (signOutEl) signOutEl.addEventListener('click', function(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('userInfo');
+            window.location.href = "index.html";
+        });
     }
 
     // SIDEBAR
@@ -761,7 +828,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    renderSidebarLogin();
+    await renderSidebarLogin();
 
     document.addEventListener('click', function(e) {
         const sidebar = document.getElementById('sidebar');
