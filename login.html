@@ -665,7 +665,7 @@
     </div>
 
 <script>
- // login-script.js
+// login.js
 
 // Utility functions
 function showAlert(message, type = "error") {
@@ -696,7 +696,7 @@ document.getElementById('passwordToggle').addEventListener('click', function () 
     }
 });
 
-// Form submit with login + userinfo flow
+// Handle login flow
 document.getElementById('loginForm').addEventListener('submit', async function (e) {
     e.preventDefault();
     clearAlert();
@@ -718,28 +718,41 @@ document.getElementById('loginForm').addEventListener('submit', async function (
             body: JSON.stringify({ email, password })
         });
         const data = await resp.json();
-        if (!resp.ok) throw new Error(data?.message || "Login failed. Please try again.");
+        console.log("Login response:", data);
 
-        // 2. Save token
-        localStorage.setItem('authToken', data.token);
+        // Try various key names for the token (token, accessToken, idToken)
+        const token = data.token || data.accessToken || data.idToken;
+        console.log("Token from login:", token);
 
-        // 3. Fetch user info
-        const infoResp = await fetch("https://w1yg1wc8cf.execute-api.af-south-1.amazonaws.com/prod/userinfo", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${data.token}`
-            }
-        });
-        const userInfo = await infoResp.json();
-        if (!infoResp.ok || !userInfo.user) {
-            showAlert("Failed to fetch user info.", "error");
+        if (!resp.ok || !token) {
+            showAlert(data?.message || "Login failed. Please try again.", "error");
             btn.disabled = false;
             btnText.innerHTML = "Sign In";
             return;
         }
 
-        // 4. Store user info locally
+        // Save token
+        localStorage.setItem('authToken', token);
+
+        // 2. Fetch user info using the token from storage
+        const infoResp = await fetch("https://w1yg1wc8cf.execute-api.af-south-1.amazonaws.com/prod/userinfo", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`
+            }
+        });
+        const userInfo = await infoResp.json();
+        console.log("User info response:", userInfo);
+
+        if (!infoResp.ok || !userInfo.user) {
+            showAlert(userInfo?.error || "Failed to fetch user info.", "error");
+            btn.disabled = false;
+            btnText.innerHTML = "Sign In";
+            return;
+        }
+
+        // Store user info locally
         localStorage.setItem("userInfo", JSON.stringify(userInfo.user));
 
         showAlert("Login successful! Redirecting...", "success");
