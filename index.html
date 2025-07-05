@@ -322,7 +322,116 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     const API_URL = 'https://xf9zlapr5e.execute-api.af-south-1.amazonaws.com/deals';
 
-    // HERO CAROUSEL
+    // ---------- USER INFO HELPERS (Handles both Attributes/UserAttributes etc) ----------
+    function getAttribute(userInfo, attrName) {
+        const attrs = userInfo.Attributes || userInfo.UserAttributes || [];
+        if (!Array.isArray(attrs)) return '';
+        const found = attrs.find(attr => attr.Name === attrName);
+        return found ? found.Value : '';
+    }
+
+    function getDisplayName(userInfo) {
+        let firstName = getAttribute(userInfo, 'given_name');
+        let lastName = getAttribute(userInfo, 'family_name');
+        let name = getAttribute(userInfo, 'name');
+        let email = getAttribute(userInfo, 'email');
+        if (firstName) return firstName + (lastName ? ' ' + lastName : '');
+        if (name) return name;
+        if (email) return email.split('@')[0].replace(/[.\-_]/g, ' ').replace(/(^|\s)\S/g, l => l.toUpperCase());
+        return userInfo.Username;
+    }
+
+    function getAvatarInitials(userInfo) {
+        const displayName = getDisplayName(userInfo);
+        if (displayName) {
+            const parts = displayName.split(' ');
+            if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+            return displayName[0].toUpperCase();
+        }
+        return 'U';
+    }
+
+    async function fetchUserInfoFromAPI(token) {
+        try {
+            const resp = await fetch("https://w1yg1wc8cf.execute-api.af-south-1.amazonaws.com/prod/userinfo", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                }
+            });
+            if (!resp.ok) throw new Error("Failed to fetch user info from API");
+            const data = await resp.json();
+            if (data && data.user) {
+                localStorage.setItem('userInfo', JSON.stringify(data.user));
+                return data.user;
+            }
+        } catch (e) {
+            console.warn("API userinfo fetch failed:", e);
+        }
+        return null;
+    }
+
+    // ---------- SIDEBAR LOGIN ----------
+    async function renderSidebarLogin() {
+        const sidebarLogin = document.getElementById('sidebarLogin');
+        let userInfo = null;
+        let authToken = localStorage.getItem('authToken');
+        try {
+            userInfo = JSON.parse(localStorage.getItem('userInfo'));
+        } catch (err) { userInfo = null; }
+
+        let attrs = (userInfo && (userInfo.Attributes || userInfo.UserAttributes)) || [];
+        let missingProfile = !userInfo || !Array.isArray(attrs) || attrs.length === 0;
+
+        if (missingProfile && authToken) {
+            userInfo = await fetchUserInfoFromAPI(authToken);
+            attrs = (userInfo && (userInfo.Attributes || userInfo.UserAttributes)) || [];
+        }
+
+        if (!userInfo || !authToken) {
+            sidebarLogin.innerHTML = `
+                <a href="login.html" class="login-btn">
+                    <i class="fas fa-sign-in-alt"></i>Login to CompareHub
+                </a>
+            `;
+            return;
+        }
+
+        const name = getDisplayName(userInfo);
+        const email = getAttribute(userInfo, 'email');
+        const avatar = getAttribute(userInfo, 'picture');
+        const initials = getAvatarInitials(userInfo);
+
+        sidebarLogin.innerHTML = `
+            <div class="user-greeting fade-in">
+                <div class="user-avatar" style="cursor:pointer;">
+                    ${avatar ? `<img src="${avatar}" alt="Avatar">` : initials}
+                </div>
+                <div class="user-info">
+                    <div class="user-name">${name}</div>
+                    <div class="user-email">${email || ''}</div>
+                    <span class="sign-out" style="cursor:pointer;">Sign Out</span>
+                </div>
+            </div>
+        `;
+        const avatarEl = sidebarLogin.querySelector('.user-avatar');
+        if (avatarEl) avatarEl.addEventListener('click', function(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            window.location.href = "profile.html";
+        });
+        const signOutEl = sidebarLogin.querySelector('.sign-out');
+        if (signOutEl) signOutEl.addEventListener('click', function(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('userInfo');
+            window.location.href = "index.html";
+        });
+    }
+
+    // ---------- HERO CAROUSEL ----------
     const heroCarousel = document.querySelector('.hero-carousel');
     if (heroCarousel) {
         const heroSlides = heroCarousel.querySelectorAll('.hero-slide');
@@ -398,7 +507,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     }
 
-    // FETCH DEALS DATA
+    // ---------- FETCH DEALS DATA ----------
     async function fetchDealsData() {
         try {
             showLoadingState();
@@ -478,7 +587,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         if (amazonSlider) amazonSlider.innerHTML = errorHTML;
     }
 
-    // PRODUCT CARD: Only "View Deal" button is clickable
+    // ---------- PRODUCT CARD ----------
     function createProductCard(product) {
         const imageUrl = product.img || product.imageUrl || product.image || '';
         const productName = product.name || product.model || product.title || 'Product';
@@ -598,7 +707,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         slider.addEventListener('mouseleave', startCarousel);
     }
 
-    // SEARCH
+    // ---------- SEARCH ----------
     window.performSearch = function(event) {
         event.preventDefault();
         const searchInput = document.getElementById('searchInput');
@@ -645,140 +754,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     });
 
-    // --- SIDEBAR LOGIN (with fallback API userinfo fetch) ---
-    async function fetchUserInfoFromAPI(token) {
-        try {
-            const resp = await fetch("https://w1yg1wc8cf.execute-api.af-south-1.amazonaws.com/prod/userinfo", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${token}`
-                }
-            });
-            if (!resp.ok) throw new Error("Failed to fetch user info from API");
-            const data = await resp.json();
-            if (data && data.user) {
-                localStorage.setItem('userInfo', JSON.stringify(data.user));
-                return data.user;
-            }
-        } catch (e) {
-            console.warn("API userinfo fetch failed:", e);
-        }
-        return null;
-    }
-
-    function getAttribute(userInfo, attrName) {
-        if (!userInfo || !userInfo.Attributes) return '';
-        const found = userInfo.Attributes.find(attr => attr.Name === attrName);
-        return found ? found.Value : '';
-    }
-
-    function getDisplayName(userInfo) {
-        let name = getAttribute(userInfo, 'name');
-        let firstName = getAttribute(userInfo, 'given_name');
-        let lastName = getAttribute(userInfo, 'family_name');
-        const email = getAttribute(userInfo, 'email');
-        // If Cognito 'name' is a full name, split it
-        if (!firstName && !lastName && name) {
-            const parts = name.trim().split(' ');
-            if (parts.length > 1) {
-                firstName = parts[0];
-                lastName = parts.slice(1).join(' ');
-            } else {
-                firstName = name;
-                lastName = '';
-            }
-        }
-        // If no name, fallback to email
-        if (!firstName && email) {
-            firstName = email.split('@')[0].replace(/\./g, ' ').replace(/(^|\s)\S/g, l => l.toUpperCase());
-        }
-        return (firstName || '') + (lastName ? ' ' + lastName : '');
-    }
-
-    function getAvatarInitials(name, email) {
-        if (name) {
-            const parts = name.trim().split(' ');
-            if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-            return name[0].toUpperCase();
-        }
-        if (email) {
-            const user = email.split('@')[0];
-            if (user.includes('.')) {
-                const uParts = user.split('.');
-                return (uParts[0][0] + uParts[1][0]).toUpperCase();
-            }
-            return user[0].toUpperCase();
-        }
-        return 'U';
-    }
-
-    async function renderSidebarLogin() {
-        const sidebarLogin = document.getElementById('sidebarLogin');
-        let userInfo = null;
-        let authToken = localStorage.getItem('authToken');
-        try {
-            userInfo = JSON.parse(localStorage.getItem('userInfo'));
-        } catch (err) { userInfo = null; }
-
-        let missingProfile =
-            !userInfo ||
-            !userInfo.Attributes ||
-            userInfo.Attributes.length === 0 ||
-            (!getAttribute(userInfo, "name") &&
-             !getAttribute(userInfo, "given_name") &&
-             !getAttribute(userInfo, "email"));
-
-        // If missing or broken, try to fetch from API
-        if (missingProfile && authToken) {
-            userInfo = await fetchUserInfoFromAPI(authToken);
-        }
-
-        // If still not present, show login button
-        if (!userInfo || !authToken) {
-            sidebarLogin.innerHTML = `
-                <a href="login.html" class="login-btn">
-                    <i class="fas fa-sign-in-alt"></i>Login to CompareHub
-                </a>
-            `;
-            return;
-        }
-
-        let email = getAttribute(userInfo, 'email');
-        let name = getDisplayName(userInfo);
-        let avatar = getAttribute(userInfo, 'picture');
-        if (!avatar && name) avatar = '';
-        const initials = getAvatarInitials(name, email);
-
-        sidebarLogin.innerHTML = `
-            <div class="user-greeting fade-in">
-                <div class="user-avatar" style="cursor:pointer;">
-                    ${avatar ? `<img src="${avatar}" alt="Avatar">` : initials}
-                </div>
-                <div class="user-info">
-                    <div class="user-name">${name}</div>
-                    <div class="user-email">${email || ''}</div>
-                    <span class="sign-out" style="cursor:pointer;">Sign Out</span>
-                </div>
-            </div>
-        `;
-        const avatarEl = sidebarLogin.querySelector('.user-avatar');
-        if (avatarEl) avatarEl.addEventListener('click', function(event) {
-            event.preventDefault();
-            event.stopPropagation();
-            window.location.href = "profile.html";
-        });
-        const signOutEl = sidebarLogin.querySelector('.sign-out');
-        if (signOutEl) signOutEl.addEventListener('click', function(event) {
-            event.preventDefault();
-            event.stopPropagation();
-            localStorage.removeItem('authToken');
-            localStorage.removeItem('userInfo');
-            window.location.href = "index.html";
-        });
-    }
-
-    // SIDEBAR
+    // ---------- SIDEBAR ----------
     window.toggleSidebar = function() {
         const sidebar = document.getElementById('sidebar');
         const overlay = document.getElementById('sidebarOverlay');
