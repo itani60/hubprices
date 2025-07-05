@@ -275,8 +275,39 @@
         </div>
     </footer>
 <script>
+// profile.js
+
 document.addEventListener('DOMContentLoaded', async function() {
-    // --- PROFILE INFO LOAD ---
+    // Helper to get attribute from both possible keys
+    function getAttribute(userInfo, attrName) {
+        const attrs = userInfo.Attributes || userInfo.UserAttributes || [];
+        if (!Array.isArray(attrs)) return '';
+        const found = attrs.find(attr => attr.Name === attrName);
+        return found ? found.Value : '';
+    }
+
+    // Display name: given + family, else name, else email username, else UUID
+    function getDisplayName(userInfo) {
+        let firstName = getAttribute(userInfo, 'given_name');
+        let lastName = getAttribute(userInfo, 'family_name');
+        let name = getAttribute(userInfo, 'name');
+        let email = getAttribute(userInfo, 'email');
+        if (firstName) return firstName + (lastName ? ' ' + lastName : '');
+        if (name) return name;
+        if (email) return email.split('@')[0].replace(/[.\-_]/g, ' ').replace(/(^|\s)\S/g, l => l.toUpperCase());
+        return userInfo.Username;
+    }
+
+    function getAvatarInitials(userInfo) {
+        const displayName = getDisplayName(userInfo);
+        if (displayName) {
+            const parts = displayName.split(' ');
+            if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+            return displayName[0].toUpperCase();
+        }
+        return 'U';
+    }
+
     async function fetchUserInfoFromAPI(token) {
         try {
             const resp = await fetch("https://w1yg1wc8cf.execute-api.af-south-1.amazonaws.com/prod/userinfo", {
@@ -298,53 +329,6 @@ document.addEventListener('DOMContentLoaded', async function() {
         return null;
     }
 
-    function getAttribute(userInfo, attrName) {
-        if (!userInfo || !userInfo.Attributes) return '';
-        const found = userInfo.Attributes.find(attr => attr.Name === attrName);
-        return found ? found.Value : '';
-    }
-
-    function getFirstAndLastName(userInfo) {
-        let name = getAttribute(userInfo, 'name');
-        let firstName = getAttribute(userInfo, 'given_name');
-        let lastName = getAttribute(userInfo, 'family_name');
-        const email = getAttribute(userInfo, 'email');
-        // If Cognito 'name' is a full name, split it
-        if (!firstName && !lastName && name) {
-            const parts = name.trim().split(' ');
-            if (parts.length > 1) {
-                firstName = parts[0];
-                lastName = parts.slice(1).join(' ');
-            } else {
-                firstName = name;
-                lastName = '';
-            }
-        }
-        // If no name, fallback to email
-        if (!firstName && email) {
-            firstName = email.split('@')[0].replace(/\./g, ' ').replace(/(^|\s)\S/g, l => l.toUpperCase());
-        }
-        return { firstName: firstName || '', lastName: lastName || '', email: email || '' };
-    }
-
-    function getAvatarInitials(name, email) {
-        // Use initials from name, or from email username part
-        if (name) {
-            const parts = name.trim().split(' ');
-            if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-            return name[0].toUpperCase();
-        }
-        if (email) {
-            const user = email.split('@')[0];
-            if (user.includes('.')) {
-                const uParts = user.split('.');
-                return (uParts[0][0] + uParts[1][0]).toUpperCase();
-            }
-            return user[0].toUpperCase();
-        }
-        return 'U';
-    }
-
     async function loadAndRenderProfile() {
         let userInfo = null;
         let authToken = localStorage.getItem('authToken');
@@ -352,20 +336,14 @@ document.addEventListener('DOMContentLoaded', async function() {
             userInfo = JSON.parse(localStorage.getItem('userInfo'));
         } catch (e) { userInfo = null; }
 
-        // If missing or clearly incomplete, fetch from API
-        let missingProfile =
-            !userInfo ||
-            !userInfo.Attributes ||
-            userInfo.Attributes.length === 0 ||
-            (!getAttribute(userInfo, "name") &&
-             !getAttribute(userInfo, "given_name") &&
-             !getAttribute(userInfo, "email"));
+        let attrs = (userInfo && (userInfo.Attributes || userInfo.UserAttributes)) || [];
+        let missingProfile = !userInfo || !Array.isArray(attrs) || attrs.length === 0;
 
         if (missingProfile && authToken) {
             userInfo = await fetchUserInfoFromAPI(authToken);
+            attrs = (userInfo && (userInfo.Attributes || userInfo.UserAttributes)) || [];
         }
 
-        // If still not present, force logout
         if (!userInfo || !authToken) {
             localStorage.removeItem('authToken');
             localStorage.removeItem('userInfo');
@@ -373,28 +351,25 @@ document.addEventListener('DOMContentLoaded', async function() {
             return;
         }
 
-        // Get values for display
-        const displayEmail = getAttribute(userInfo, 'email');
-        const displayNameRaw = getAttribute(userInfo, 'name');
-        const firstNameAttr = getAttribute(userInfo, 'given_name');
-        const lastNameAttr = getAttribute(userInfo, 'family_name');
-        const { firstName, lastName, email } = getFirstAndLastName(userInfo);
-        const avatarInitials = getAvatarInitials(displayNameRaw || firstName, displayEmail);
+        // Render profile
+        const displayName = getDisplayName(userInfo);
+        const email = getAttribute(userInfo, 'email');
+        const firstName = getAttribute(userInfo, 'given_name');
+        const lastName = getAttribute(userInfo, 'family_name');
+        const avatarInitials = getAvatarInitials(userInfo);
 
-        // Profile sidebar
         document.getElementById('avatarInitials').innerHTML = `
             ${avatarInitials}
             <button class="avatar-upload">
                 <i class="fas fa-camera"></i>
             </button>
         `;
-        document.getElementById('profileName').textContent = firstName + (lastName ? ' ' + lastName : '');
-        document.getElementById('profileEmail').textContent = email;
+        document.getElementById('profileName').textContent = displayName;
+        document.getElementById('profileEmail').textContent = email || '';
 
-        // Profile form fields
-        document.getElementById('firstName').value = firstName;
-        document.getElementById('lastName').value = lastName;
-        document.getElementById('email').value = email;
+        document.getElementById('firstName').value = firstName || '';
+        document.getElementById('lastName').value = lastName || '';
+        document.getElementById('email').value = email || '';
     }
 
     await loadAndRenderProfile();
