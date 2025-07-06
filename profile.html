@@ -504,9 +504,9 @@
                 </a>
             </div>
             <div class="search-container">
-                <form id="search-form" onsubmit="performSearch(event)">
-                    <input type="text" name="q" class="search-input" placeholder="What are you shopping for?" id="searchInput">
-                    <button type="submit" class="search-button"><i class="fas fa-search"></i></button>
+                <form id="search-form">
+                    <input type="text" name="q" class="search-input" placeholder="What are you shopping for?" id="searchInput" aria-label="Search products">
+                    <button type="submit" class="search-button" aria-label="Search"><i class="fas fa-search"></i></button>
                 </form>
                 <div class="search-suggestions" id="searchSuggestions">
                     <div class="suggestions-header">
@@ -1279,5 +1279,8 @@ document.addEventListener('DOMContentLoaded', async function() {
     });
 });
 </script>
+
+
+<script src="search-suggestions.js"></script>
 </body>
 </html>
