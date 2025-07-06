@@ -1409,130 +1409,150 @@ document.addEventListener('DOMContentLoaded', async function() {
 <!-- Include the search suggestions functionality -->
 <script src="search-suggestions.js"></script>
 
-<!-- Mobile Search Modal Functionality -->
+<!-- Mobile Search Modal Script -->
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Mobile search functionality
-        const searchButton = document.querySelector('.search-button');
-        const mobileSearchModal = document.getElementById('mobileSearchModal');
-        const mobileSearchClose = document.getElementById('mobileSearchClose');
-        const mobileSearchForm = document.getElementById('mobileSearchForm');
-        const mobileSearchInput = document.getElementById('mobileSearchInput');
-        const mobileSuggestionsGrid = document.getElementById('mobileSuggestionsGrid');
-        const mobileSearchQuery = document.getElementById('mobileSearchQuery');
-        
-        // Function to check if device is a mobile phone (not tablet)
-        function isMobilePhone() {
-            const userAgent = navigator.userAgent.toLowerCase();
-            const isMobile = /iphone|ipod|android|blackberry|iemobile|opera mini/i.test(userAgent);
-            const isTablet = /ipad|tablet|playbook|silk/i.test(userAgent);
-            return isMobile && !isTablet;
-        }
-        
-        // Only add mobile search functionality on mobile phones
+document.addEventListener('DOMContentLoaded', function() {
+    // Mobile search modal functionality
+    const searchInput = document.getElementById('searchInput');
+    const searchButton = document.querySelector('.search-button');
+    const mobileSearchModal = document.getElementById('mobileSearchModal');
+    const mobileSearchClose = document.getElementById('mobileSearchClose');
+    const mobileSearchInput = document.getElementById('mobileSearchInput');
+    const mobileSearchForm = document.getElementById('mobileSearchForm');
+    const mobileSearchQuery = document.getElementById('mobileSearchQuery');
+    const mobileSuggestionsGrid = document.getElementById('mobileSuggestionsGrid');
+    
+    // Function to check if device is a mobile phone (not tablet)
+    function isMobilePhone() {
+        return window.innerWidth <= 768 &&
+              (typeof window.orientation !== 'undefined' ||
+               navigator.userAgent.indexOf('IEMobile') !== -1 ||
+               /Android|webOS|iPhone|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
+    }
+    
+    // Function to open mobile search modal
+    function openMobileSearchModal() {
         if (isMobilePhone()) {
-            // Show mobile search modal when search button is clicked on mobile
-            if (searchButton) {
-                searchButton.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    mobileSearchModal.classList.add('active');
-                    if (mobileSearchInput) {
-                        setTimeout(() => {
-                            mobileSearchInput.focus();
-                        }, 100);
-                    }
-                }, true);
+            mobileSearchModal.classList.add('active');
+            mobileSearchInput.focus();
+            // Copy value from main search input if it exists
+            if (searchInput && searchInput.value) {
+                mobileSearchInput.value = searchInput.value;
+                // Trigger input event to show suggestions
+                const inputEvent = new Event('input', { bubbles: true });
+                mobileSearchInput.dispatchEvent(inputEvent);
             }
-            
-            // Close mobile search modal
-            if (mobileSearchClose) {
-                mobileSearchClose.addEventListener('click', function() {
-                    mobileSearchModal.classList.remove('active');
-                });
+        }
+    }
+    
+    // Function to close mobile search modal
+    function closeMobileSearchModal() {
+        mobileSearchModal.classList.remove('active');
+    }
+    
+    // Event listeners for opening modal
+    if (searchInput) {
+        searchInput.addEventListener('click', function(e) {
+            if (isMobilePhone()) {
+                e.preventDefault();
+                e.stopPropagation();
+                openMobileSearchModal();
             }
-            
-            // Handle mobile search form submission
-            if (mobileSearchForm) {
-                mobileSearchForm.addEventListener('submit', function(e) {
-                    e.preventDefault();
-                    const query = mobileSearchInput.value.trim();
-                    if (query) {
-                        window.location.href = `search-results.html?q=${encodeURIComponent(query)}`;
-                    }
-                });
+        }, { capture: true });
+    }
+    
+    if (searchButton) {
+        searchButton.addEventListener('click', function(e) {
+            if (isMobilePhone()) {
+                e.preventDefault();
+                e.stopPropagation();
+                openMobileSearchModal();
             }
-            
-            // Mobile search suggestions functionality
-            let mobileDebounceTimer;
-            
-            if (mobileSearchInput) {
-                mobileSearchInput.addEventListener('input', function() {
-                    const query = this.value.trim();
-                    
-                    // Update the search query display
-                    if (mobileSearchQuery) {
-                        mobileSearchQuery.textContent = query || 'results';
-                    }
-                    
-                    // Clear previous debounce timer
-                    clearTimeout(mobileDebounceTimer);
-                    
-                    // Set new debounce timer
-                    mobileDebounceTimer = setTimeout(() => {
-                        if (query.length >= 2) {
-                            fetchMobileSuggestions(query);
-                        } else {
-                            // Clear suggestions if query is too short
-                            if (mobileSuggestionsGrid) {
-                                mobileSuggestionsGrid.innerHTML = '';
-                            }
-                        }
-                    }, 300);
-                });
+        }, { capture: true });
+    }
+    
+    // Event listener for closing modal
+    if (mobileSearchClose) {
+        mobileSearchClose.addEventListener('click', closeMobileSearchModal);
+    }
+    
+    // Handle mobile search form submission
+    if (mobileSearchForm) {
+        mobileSearchForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const query = mobileSearchInput.value.trim();
+            if (query) {
+                window.location.href = `search-results.html?q=${encodeURIComponent(query)}`;
             }
+        });
+    }
+    
+    // Mobile search suggestions functionality
+    if (mobileSearchInput) {
+        const API_URL = 'https://xf9zlapr5e.execute-api.af-south-1.amazonaws.com/search';
+        let debounceTimer;
+        
+        mobileSearchInput.addEventListener('input', function() {
+            const query = this.value.trim();
+            mobileSearchQuery.textContent = query || 'results';
             
-            // Function to fetch and display mobile search suggestions
-            function fetchMobileSuggestions(query) {
-                // This would normally fetch from an API, but for demo we'll use mock data
-                const mockSuggestions = [
-                    { id: 1, name: 'iPhone 15 Pro', image: 'https://comparehub-smartphone-images.s3.af-south-1.amazonaws.com/iphone15pro.jpg' },
-                    { id: 2, name: 'Samsung Galaxy S24', image: 'https://comparehub-smartphone-images.s3.af-south-1.amazonaws.com/s24.jpg' },
-                    { id: 3, name: 'Google Pixel 8', image: 'https://comparehub-smartphone-images.s3.af-south-1.amazonaws.com/pixel8.jpg' },
-                    { id: 4, name: 'OnePlus 12', image: 'https://comparehub-smartphone-images.s3.af-south-1.amazonaws.com/oneplus12.jpg' }
-                ];
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(async function() {
+                if (query.length < 2) {
+                    mobileSuggestionsGrid.innerHTML = '';
+                    return;
+                }
                 
-                // Filter suggestions based on query
-                const filteredSuggestions = mockSuggestions.filter(item =>
-                    item.name.toLowerCase().includes(query.toLowerCase())
-                );
-                
-                // Display suggestions
-                if (mobileSuggestionsGrid) {
+                try {
+                    const response = await fetch(`${API_URL}?q=${encodeURIComponent(query)}&limit=10`);
+                    if (!response.ok) throw new Error('API request failed');
+                    
+                    const data = await response.json();
+                    const suggestions = data.results || [];
+                    
                     mobileSuggestionsGrid.innerHTML = '';
                     
-                    if (filteredSuggestions.length > 0) {
-                        filteredSuggestions.forEach(item => {
-                            const suggestionItem = document.createElement('a');
-                            suggestionItem.href = `smartphones-product.html?id=${item.id}`;
-                            suggestionItem.className = 'mobile-suggestion-item';
-                            
-                            suggestionItem.innerHTML = `
-                                <div class="mobile-suggestion-img">
-                                    <img src="${item.image}" alt="${item.name}">
-                                </div>
-                                <div class="mobile-suggestion-name">${item.name}</div>
-                            `;
-                            
-                            mobileSuggestionsGrid.appendChild(suggestionItem);
-                        });
-                    } else {
-                        mobileSuggestionsGrid.innerHTML = '<div class="no-suggestions">No results found</div>';
+                    if (suggestions.length === 0) {
+                        mobileSuggestionsGrid.innerHTML = '<div class="mobile-no-suggestions">No suggestions found</div>';
+                        return;
                     }
+                    
+                    suggestions.forEach(item => {
+                        const isCategory = item.type === 'category';
+                        const suggestionElement = document.createElement('div');
+                        suggestionElement.className = `mobile-suggestion-item ${isCategory ? 'category' : 'product'}`;
+                        
+                        if (!isCategory) {
+                            const productName = item.name || item.model || item.title || '';
+                            suggestionElement.innerHTML = `
+                                <a href="search-results.html?q=${encodeURIComponent(productName)}" class="mobile-suggestion-link">
+                                    <div class="mobile-suggestion-img">
+                                        <img src="${item.imageUrl || item.image || 'images/phones/Apple iPhone 16.webp'}" alt="${productName}">
+                                    </div>
+                                    <div class="mobile-suggestion-name">${productName}</div>
+                                </a>
+                            `;
+                        } else {
+                            suggestionElement.innerHTML = `
+                                <a href="${(item.category || item.name).toLowerCase()}.html" class="mobile-suggestion-link">
+                                    <div class="mobile-suggestion-icon">
+                                        <i class="fas fa-folder"></i>
+                                    </div>
+                                    <div class="mobile-suggestion-name">${item.name || ''}</div>
+                                </a>
+                            `;
+                        }
+                        
+                        mobileSuggestionsGrid.appendChild(suggestionElement);
+                    });
+                } catch (error) {
+                    console.error('Error fetching suggestions:', error);
+                    mobileSuggestionsGrid.innerHTML = '<div class="mobile-no-suggestions">Error loading suggestions</div>';
                 }
-            }
-        }
-    });
+            }, 300); // Debounce delay
+        });
+    }
+});
 </script>
 </body>
 </html>
