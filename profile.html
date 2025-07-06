@@ -17,79 +17,96 @@
             width: 100%;
             height: 100%;
             background-color: #fff;
-            z-index: 2000;
-            overflow-y: auto;
+            z-index: 1001;
+            padding: 15px;
+            box-sizing: border-box;
+            flex-direction: column;
         }
 
         .mobile-search-modal.active {
-            display: block;
+            display: flex;
         }
 
-        .mobile-search-header {
+        .mobile-search-modal-header {
             display: flex;
             align-items: center;
-            padding: 15px;
-            border-bottom: 1px solid #eee;
-            position: sticky;
-            top: 0;
-            background-color: #fff;
-            z-index: 10;
+            margin-bottom: 15px;
         }
 
         .mobile-search-close {
-            background: none;
-            border: none;
             font-size: 24px;
             margin-right: 15px;
             cursor: pointer;
+            color: #333;
         }
 
         .mobile-search-form {
             display: flex;
             flex: 1;
+            position: relative;
         }
 
         .mobile-search-input {
             flex: 1;
             padding: 10px 15px;
             border: 1px solid #ddd;
-            border-radius: 4px 0 0 4px;
+            border-radius: 4px;
             font-size: 16px;
+            outline: none;
         }
 
         .mobile-search-button {
-            background-color: #4285f4;
-            color: white;
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
             border: none;
-            padding: 0 15px;
-            border-radius: 0 4px 4px 0;
+            color: #777;
             cursor: pointer;
         }
 
-        .mobile-suggestions-container {
-            padding: 15px;
+        .mobile-search-suggestions {
+            flex: 1;
+            overflow-y: auto;
         }
 
         .mobile-suggestions-header {
             display: flex;
-            justify-content: space-between;
-            margin-bottom: 15px;
-            color: #666;
-            font-size: 14px;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+            margin-bottom: 10px;
+        }
+
+        .mobile-all-results {
+            font-weight: bold;
+            margin-right: 5px;
+        }
+
+        .mobile-search-query {
+            color: #777;
         }
 
         .mobile-suggestions-grid {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 15px;
+            grid-template-columns: repeat(auto-fill, minmax(100%, 1fr));
+            gap: 10px;
         }
 
         .mobile-suggestion-item {
+            padding: 10px;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+
+        .mobile-suggestion-item:hover {
+            background: #f5f5f5;
+        }
+
+        .mobile-suggestion-link {
             display: flex;
             align-items: center;
-            padding: 10px;
-            border-radius: 8px;
-            background-color: #f9f9f9;
             text-decoration: none;
             color: inherit;
         }
@@ -109,9 +126,30 @@
             object-fit: contain;
         }
 
+        .mobile-suggestion-icon {
+            width: 40px;
+            height: 40px;
+            margin-right: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #3498db;
+        }
+
         .mobile-suggestion-name {
             font-size: 14px;
-            color: #333;
+        }
+
+        .mobile-no-suggestions {
+            text-align: center;
+            padding: 20px;
+            color: #777;
+        }
+
+        @media (min-width: 769px) {
+            .mobile-search-modal {
+                display: none !important;
+            }
         }
         
         /* Enhanced Wishlist Search Styling */
@@ -960,16 +998,14 @@
 
     <!-- Mobile Search Modal -->
     <div class="mobile-search-modal" id="mobileSearchModal">
-        <div class="mobile-search-header">
-            <button class="mobile-search-close" id="mobileSearchClose">&times;</button>
+        <div class="mobile-search-modal-header">
+            <span class="mobile-search-close" id="mobileSearchClose">&times;</span>
             <form class="mobile-search-form" id="mobileSearchForm">
                 <input type="text" class="mobile-search-input" id="mobileSearchInput" placeholder="Search...">
-                <button type="submit" class="mobile-search-button" aria-label="Search">
-                    <i class="fas fa-search"></i>
-                </button>
+                <button type="submit" class="mobile-search-button"><i class="fas fa-search"></i></button>
             </form>
         </div>
-        <div class="mobile-suggestions-container">
+        <div class="mobile-search-suggestions" id="mobileSearchSuggestions">
             <div class="mobile-suggestions-header">
                 <span class="mobile-all-results">All</span>
                 <span class="mobile-search-query" id="mobileSearchQuery">results</span>
