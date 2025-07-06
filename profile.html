@@ -8,6 +8,112 @@
     <link rel="stylesheet" href="index.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
+        /* Mobile Search Modal */
+        .mobile-search-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #fff;
+            z-index: 2000;
+            overflow-y: auto;
+        }
+
+        .mobile-search-modal.active {
+            display: block;
+        }
+
+        .mobile-search-header {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            position: sticky;
+            top: 0;
+            background-color: #fff;
+            z-index: 10;
+        }
+
+        .mobile-search-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            margin-right: 15px;
+            cursor: pointer;
+        }
+
+        .mobile-search-form {
+            display: flex;
+            flex: 1;
+        }
+
+        .mobile-search-input {
+            flex: 1;
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px 0 0 4px;
+            font-size: 16px;
+        }
+
+        .mobile-search-button {
+            background-color: #4285f4;
+            color: white;
+            border: none;
+            padding: 0 15px;
+            border-radius: 0 4px 4px 0;
+            cursor: pointer;
+        }
+
+        .mobile-suggestions-container {
+            padding: 15px;
+        }
+
+        .mobile-suggestions-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .mobile-suggestions-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+
+        .mobile-suggestion-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .mobile-suggestion-img {
+            width: 40px;
+            height: 40px;
+            margin-right: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .mobile-suggestion-img img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        .mobile-suggestion-name {
+            font-size: 14px;
+            color: #333;
+        }
+        
         /* Enhanced Wishlist Search Styling */
         .wishlist-search-wrapper {
             margin-bottom: 20px;
@@ -852,6 +958,26 @@
         </div>
     </div>
 
+    <!-- Mobile Search Modal -->
+    <div class="mobile-search-modal" id="mobileSearchModal">
+        <div class="mobile-search-header">
+            <button class="mobile-search-close" id="mobileSearchClose">&times;</button>
+            <form class="mobile-search-form" id="mobileSearchForm">
+                <input type="text" class="mobile-search-input" id="mobileSearchInput" placeholder="Search...">
+                <button type="submit" class="mobile-search-button" aria-label="Search">
+                    <i class="fas fa-search"></i>
+                </button>
+            </form>
+        </div>
+        <div class="mobile-suggestions-container">
+            <div class="mobile-suggestions-header">
+                <span class="mobile-all-results">All</span>
+                <span class="mobile-search-query" id="mobileSearchQuery">results</span>
+            </div>
+            <div class="mobile-suggestions-grid" id="mobileSuggestionsGrid"></div>
+        </div>
+    </div>
+
     <footer class="footer">
         <div class="footer-content">
             <div class="footer-section">
@@ -1280,7 +1406,133 @@ document.addEventListener('DOMContentLoaded', async function() {
 });
 </script>
 
-
+<!-- Include the search suggestions functionality -->
 <script src="search-suggestions.js"></script>
+
+<!-- Mobile Search Modal Functionality -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Mobile search functionality
+        const searchButton = document.querySelector('.search-button');
+        const mobileSearchModal = document.getElementById('mobileSearchModal');
+        const mobileSearchClose = document.getElementById('mobileSearchClose');
+        const mobileSearchForm = document.getElementById('mobileSearchForm');
+        const mobileSearchInput = document.getElementById('mobileSearchInput');
+        const mobileSuggestionsGrid = document.getElementById('mobileSuggestionsGrid');
+        const mobileSearchQuery = document.getElementById('mobileSearchQuery');
+        
+        // Function to check if device is a mobile phone (not tablet)
+        function isMobilePhone() {
+            const userAgent = navigator.userAgent.toLowerCase();
+            const isMobile = /iphone|ipod|android|blackberry|iemobile|opera mini/i.test(userAgent);
+            const isTablet = /ipad|tablet|playbook|silk/i.test(userAgent);
+            return isMobile && !isTablet;
+        }
+        
+        // Only add mobile search functionality on mobile phones
+        if (isMobilePhone()) {
+            // Show mobile search modal when search button is clicked on mobile
+            if (searchButton) {
+                searchButton.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    mobileSearchModal.classList.add('active');
+                    if (mobileSearchInput) {
+                        setTimeout(() => {
+                            mobileSearchInput.focus();
+                        }, 100);
+                    }
+                }, true);
+            }
+            
+            // Close mobile search modal
+            if (mobileSearchClose) {
+                mobileSearchClose.addEventListener('click', function() {
+                    mobileSearchModal.classList.remove('active');
+                });
+            }
+            
+            // Handle mobile search form submission
+            if (mobileSearchForm) {
+                mobileSearchForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    const query = mobileSearchInput.value.trim();
+                    if (query) {
+                        window.location.href = `search-results.html?q=${encodeURIComponent(query)}`;
+                    }
+                });
+            }
+            
+            // Mobile search suggestions functionality
+            let mobileDebounceTimer;
+            
+            if (mobileSearchInput) {
+                mobileSearchInput.addEventListener('input', function() {
+                    const query = this.value.trim();
+                    
+                    // Update the search query display
+                    if (mobileSearchQuery) {
+                        mobileSearchQuery.textContent = query || 'results';
+                    }
+                    
+                    // Clear previous debounce timer
+                    clearTimeout(mobileDebounceTimer);
+                    
+                    // Set new debounce timer
+                    mobileDebounceTimer = setTimeout(() => {
+                        if (query.length >= 2) {
+                            fetchMobileSuggestions(query);
+                        } else {
+                            // Clear suggestions if query is too short
+                            if (mobileSuggestionsGrid) {
+                                mobileSuggestionsGrid.innerHTML = '';
+                            }
+                        }
+                    }, 300);
+                });
+            }
+            
+            // Function to fetch and display mobile search suggestions
+            function fetchMobileSuggestions(query) {
+                // This would normally fetch from an API, but for demo we'll use mock data
+                const mockSuggestions = [
+                    { id: 1, name: 'iPhone 15 Pro', image: 'https://comparehub-smartphone-images.s3.af-south-1.amazonaws.com/iphone15pro.jpg' },
+                    { id: 2, name: 'Samsung Galaxy S24', image: 'https://comparehub-smartphone-images.s3.af-south-1.amazonaws.com/s24.jpg' },
+                    { id: 3, name: 'Google Pixel 8', image: 'https://comparehub-smartphone-images.s3.af-south-1.amazonaws.com/pixel8.jpg' },
+                    { id: 4, name: 'OnePlus 12', image: 'https://comparehub-smartphone-images.s3.af-south-1.amazonaws.com/oneplus12.jpg' }
+                ];
+                
+                // Filter suggestions based on query
+                const filteredSuggestions = mockSuggestions.filter(item =>
+                    item.name.toLowerCase().includes(query.toLowerCase())
+                );
+                
+                // Display suggestions
+                if (mobileSuggestionsGrid) {
+                    mobileSuggestionsGrid.innerHTML = '';
+                    
+                    if (filteredSuggestions.length > 0) {
+                        filteredSuggestions.forEach(item => {
+                            const suggestionItem = document.createElement('a');
+                            suggestionItem.href = `smartphones-product.html?id=${item.id}`;
+                            suggestionItem.className = 'mobile-suggestion-item';
+                            
+                            suggestionItem.innerHTML = `
+                                <div class="mobile-suggestion-img">
+                                    <img src="${item.image}" alt="${item.name}">
+                                </div>
+                                <div class="mobile-suggestion-name">${item.name}</div>
+                            `;
+                            
+                            mobileSuggestionsGrid.appendChild(suggestionItem);
+                        });
+                    } else {
+                        mobileSuggestionsGrid.innerHTML = '<div class="no-suggestions">No results found</div>';
+                    }
+                }
+            }
+        }
+    });
+</script>
 </body>
 </html>
