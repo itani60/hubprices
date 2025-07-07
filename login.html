@@ -10,7 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <meta name="google-signin-client_id" content="YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
-  <style>
+    <style>
         :root {
             --primary-color: #f80101;
             --primary-hover: #d80000;
@@ -687,6 +687,17 @@ function clearAlert() {
     document.getElementById('alert-container').innerHTML = '';
 }
 
+// Cookie utility functions
+function setCookie(name, value, days) {
+    let expires = "";
+    if (days) {
+        const date = new Date();
+        date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+        expires = "; expires=" + date.toUTCString();
+    }
+    document.cookie = name + "=" + encodeURIComponent(value) + expires + "; path=/; Secure; SameSite=Strict";
+}
+
 // Password toggle
 document.getElementById('passwordToggle').addEventListener('click', function () {
     const passwordInput = document.getElementById('password');
@@ -730,7 +741,8 @@ document.getElementById('loginForm').addEventListener('submit', async function (
             btnText.innerHTML = "Sign In";
             return;
         }
-        localStorage.setItem('authToken', token);
+        // Set authToken cookie (expires in 7 days)
+        setCookie('authToken', token, 7);
         const infoResp = await fetch("https://w1yg1wc8cf.execute-api.af-south-1.amazonaws.com/prod/userinfo", {
             method: "POST",
             headers: {
@@ -745,12 +757,13 @@ document.getElementById('loginForm').addEventListener('submit', async function (
             btnText.innerHTML = "Sign In";
             return;
         }
-        localStorage.setItem("userInfo", JSON.stringify(userInfo.user));
+        // Set userInfo cookie (expires in 7 days)
+        setCookie('userInfo', JSON.stringify(userInfo.user), 7);
         showAlert("Login successful! Redirecting...", "success");
         setTimeout(() => {
             window.location.href = "index.html";
         }, 1000);
-    } catch (err) {
+    catch (err) {
         showAlert(err.message || "Login failed. Please try again.", "error");
     } finally {
         btn.disabled = false;
@@ -793,6 +806,7 @@ document.getElementById('submitResetBtn').addEventListener('click', async functi
         });
         const data = await resp.json();
         if (!resp.ok) throw new Error(data?.message || "Failed to send reset email.");
+        // Use sessionStorage for resetEmail as it’s temporary
         sessionStorage.setItem("resetEmail", resetEmail);
         window.location.href = "reset-password.html";
     } catch (err) {
@@ -813,7 +827,7 @@ function showModalAlert(message) {
 }
 
 // --- GOOGLE LOGIN INTEGRATION ---
-const GOOGLE_CLIENT_ID = "982307721628-lp2riufu960o1u658o6hmbuk4b03vhak.apps.googleusercontent.com"; // Replace with your Google Client ID
+const GOOGLE_CLIENT_ID = "982307721628-lp2riufu960o1u658o6hmbuk4b03vhak.apps.googleusercontent.com";
 const GOOGLE_LAMBDA_URL = "https://w1yg1wc8cf.execute-api.af-south-1.amazonaws.com/prod/google-login";
 
 // Use new Google Identity Services
@@ -827,16 +841,14 @@ function startGoogleSignIn() {
         });
         googleInitialized = true;
     }
-    google.accounts.id.prompt(); // Optionally show One Tap
+    google.accounts.id.prompt();
 }
 
 document.getElementById('google-login-btn').addEventListener('click', function() {
-    // Render a Google sign-in prompt
     startGoogleSignIn();
 });
 
 function handleGoogleCredentialResponse(response) {
-    // response.credential is the Google ID token
     if (!response.credential) {
         showAlert('Google login failed. No credential.', 'error');
         return;
@@ -851,7 +863,8 @@ function handleGoogleCredentialResponse(response) {
     .then(res => res.json())
     .then(data => {
         if (data.user) {
-            localStorage.setItem("userInfo", JSON.stringify(data.user));
+            // Set userInfo cookie (expires in 7 days)
+            setCookie('userInfo', JSON.stringify(data.user), 7);
             showAlert("Google login successful! Redirecting...", "success");
             setTimeout(() => {
                 window.location.href = "index.html";
