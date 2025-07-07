@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <meta name="google-signin-client_id" content="YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com">
+    <meta name="google-signin-client_id" content="982307721628-lp2riufu960o1u658o6hmbuk4b03vhak.apps.googleusercontent.com">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         :root {
@@ -31,25 +31,13 @@
         }
 
         @keyframes slideUp {
-            from {
-                opacity: 0;
-                transform: translateY(40px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(40px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         @keyframes shake {
@@ -717,13 +705,15 @@ document.getElementById('loginForm').addEventListener('submit', async function (
   btn.disabled = true;
   btnText.innerHTML = `<span class="spinner"></span>`;
   try {
+    console.log('Sending login request:', { email, password });
     const resp = await fetch("https://w1yg1wc8cf.execute-api.af-south-1.amazonaws.com/prod/logins", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
-      credentials: 'include', // Include cookies in request/response
+      credentials: 'include',
     });
     const data = await resp.json();
+    console.log('Login response:', data);
     if (!resp.ok || !data.tokens?.AccessToken) {
       showAlert(data.error || "Login failed. Please try again.", "error");
       btn.disabled = false;
@@ -735,6 +725,7 @@ document.getElementById('loginForm').addEventListener('submit', async function (
       window.location.href = "index.html";
     }, 1000);
   } catch (err) {
+    console.error('Login error:', err);
     showAlert(err.message || "Login failed. Please try again.", "error");
   } finally {
     btn.disabled = false;
