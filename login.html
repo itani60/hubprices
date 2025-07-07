@@ -715,44 +715,33 @@ document.getElementById('loginForm').addEventListener('submit', async function (
     const btn = document.getElementById('loginBtn');
     const btnText = document.getElementById('loginBtnText');
     btn.disabled = true;
-    btnText.innerHTML = `<span class="spinner"></span>`;
+    btnText.innerHTML = `<span class="spinner"></span> Logging In...`;
+    
     try {
         const resp = await fetch("https://w1yg1wc8cf.execute-api.af-south-1.amazonaws.com/prod/logins", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({ email, password })
+            body: JSON.stringify({ email, password }),
+            // VERY IMPORTANT: This tells the browser to send/receive cookies for cross-origin requests.
+            credentials: "include" 
         });
+
         const data = await resp.json();
-        const token = data?.tokens?.AccessToken;
-        if (!resp.ok || !token) {
-            showAlert(data?.message || "Login failed. Please try again.", "error");
+
+        if (!resp.ok) {
+            // If the response is not OK, show the error from the server.
+            showAlert(data?.error || "Login failed. Please check your credentials.", "error");
             btn.disabled = false;
             btnText.innerHTML = "Sign In";
-            return;
+        } else {
+            // On success, the server has set the HttpOnly cookie. We don't handle tokens here.
+            showAlert("Login successful! Redirecting...", "success");
+            setTimeout(() => {
+                window.location.href = "index.html"; // Redirect to your main/dashboard page
+            }, 1000);
         }
-        localStorage.setItem('authToken', token);
-        const infoResp = await fetch("https://w1yg1wc8cf.execute-api.af-south-1.amazonaws.com/prod/userinfo", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${token}`
-            }
-        });
-        const userInfo = await infoResp.json();
-        if (!infoResp.ok || !userInfo.user) {
-            showAlert(userInfo?.error || "Failed to fetch user info.", "error");
-            btn.disabled = false;
-            btnText.innerHTML = "Sign In";
-            return;
-        }
-        localStorage.setItem("userInfo", JSON.stringify(userInfo.user));
-        showAlert("Login successful! Redirecting...", "success");
-        setTimeout(() => {
-            window.location.href = "index.html";
-        }, 1000);
     } catch (err) {
-        showAlert(err.message || "Login failed. Please try again.", "error");
-    } finally {
+        showAlert("A network error occurred. Please try again.", "error");
         btn.disabled = false;
         btnText.innerHTML = "Sign In";
     }
@@ -769,7 +758,7 @@ document.getElementById('backToHomeBtn').addEventListener('click', function() {
     window.location.href = "index.html";
 });
 
-// Forgot Password Modal logic
+// Forgot Password Modal logic (no changes needed here)
 function forgotPassword() {
     document.getElementById('forgotPasswordModal').classList.add('active');
     document.getElementById('resetEmail').value = '';
@@ -813,10 +802,9 @@ function showModalAlert(message) {
 }
 
 // --- GOOGLE LOGIN INTEGRATION ---
-const GOOGLE_CLIENT_ID = "982307721628-lp2riufu960o1u658o6hmbuk4b03vhak.apps.googleusercontent.com"; // Replace with your Google Client ID
+const GOOGLE_CLIENT_ID = "982307721628-lp2riufu960o1u658o6hmbuk4b03vhak.apps.googleusercontent.com";
 const GOOGLE_LAMBDA_URL = "https://w1yg1wc8cf.execute-api.af-south-1.amazonaws.com/prod/google-login";
 
-// Use new Google Identity Services
 let googleInitialized = false;
 
 function startGoogleSignIn() {
@@ -827,47 +815,49 @@ function startGoogleSignIn() {
         });
         googleInitialized = true;
     }
-    google.accounts.id.prompt(); // Optionally show One Tap
+    google.accounts.id.prompt();
 }
 
 document.getElementById('google-login-btn').addEventListener('click', function() {
-    // Render a Google sign-in prompt
     startGoogleSignIn();
 });
 
-function handleGoogleCredentialResponse(response) {
-    // response.credential is the Google ID token
+async function handleGoogleCredentialResponse(response) {
     if (!response.credential) {
-        showAlert('Google login failed. No credential.', 'error');
+        showAlert('Google login failed. No credential received.', 'error');
         return;
     }
-    document.getElementById('google-login-btn').disabled = true;
-    document.getElementById('google-login-btn').innerHTML = `<span class="spinner"></span> Signing in...`;
-    fetch(GOOGLE_LAMBDA_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id_token: response.credential })
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.user) {
-            localStorage.setItem("userInfo", JSON.stringify(data.user));
+    const googleBtn = document.getElementById('google-login-btn');
+    googleBtn.disabled = true;
+    googleBtn.innerHTML = `<span class="spinner"></span> Signing in...`;
+
+    try {
+        const res = await fetch(GOOGLE_LAMBDA_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id_token: response.credential }),
+            // IMPORTANT: Also include credentials for Google login
+            credentials: "include"
+        });
+
+        const data = await res.json();
+        
+        if (res.ok) {
+            // NO MORE localStorage.setItem. The server sets the cookie.
             showAlert("Google login successful! Redirecting...", "success");
             setTimeout(() => {
                 window.location.href = "index.html";
             }, 1000);
         } else {
             showAlert(data.error || "Google login failed.", "error");
+            googleBtn.disabled = false;
+            googleBtn.innerHTML = `<img src="https://developers.google.com/identity/images/g-logo.png" alt="Google" class="google-logo"> <span>Sign in with Google</span>`;
         }
-    })
-    .catch(() => {
+    } catch (err) {
         showAlert("Network or server error with Google login.", "error");
-    })
-    .finally(() => {
-        document.getElementById('google-login-btn').disabled = false;
-        document.getElementById('google-login-btn').innerHTML =
-            `<img src="https://developers.google.com/identity/images/g-logo.png" alt="Google" class="google-logo"> <span>Sign in with Google</span>`;
-    });
+        googleBtn.disabled = false;
+        googleBtn.innerHTML = `<img src="https://developers.google.com/identity/images/g-logo.png" alt="Google" class="google-logo"> <span>Sign in with Google</span>`;
+    }
 }
 </script>
 </body>
