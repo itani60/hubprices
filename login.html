@@ -673,7 +673,7 @@
     </div>
 
 <script>
-// Utility functions
+// Utility: show alert
 function showAlert(message, type = "error") {
     const alertContainer = document.getElementById('alert-container');
     alertContainer.innerHTML = `
@@ -702,7 +702,7 @@ document.getElementById('passwordToggle').addEventListener('click', function () 
     }
 });
 
-// Email/password login
+// Email/password login - now uses cookie, not localStorage
 document.getElementById('loginForm').addEventListener('submit', async function (e) {
     e.preventDefault();
     clearAlert();
@@ -717,26 +717,27 @@ document.getElementById('loginForm').addEventListener('submit', async function (
     btn.disabled = true;
     btnText.innerHTML = `<span class="spinner"></span>`;
     try {
+        // Login API sets HttpOnly cookie
         const resp = await fetch("https://w1yg1wc8cf.execute-api.af-south-1.amazonaws.com/prod/logins", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({ email, password })
+            body: JSON.stringify({ email, password }),
+            credentials: 'include'
         });
         const data = await resp.json();
-        const token = data?.tokens?.AccessToken;
-        if (!resp.ok || !token) {
-            showAlert(data?.message || "Login failed. Please try again.", "error");
+        if (!resp.ok) {
+            showAlert(data?.error || "Login failed. Please try again.", "error");
             btn.disabled = false;
             btnText.innerHTML = "Sign In";
             return;
         }
-        localStorage.setItem('authToken', token);
+        // Userinfo endpoint will read token from HttpOnly cookie
         const infoResp = await fetch("https://w1yg1wc8cf.execute-api.af-south-1.amazonaws.com/prod/userinfo", {
             method: "POST",
             headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${token}`
-            }
+                "Content-Type": "application/json"
+            },
+            credentials: 'include'
         });
         const userInfo = await infoResp.json();
         if (!infoResp.ok || !userInfo.user) {
@@ -745,7 +746,8 @@ document.getElementById('loginForm').addEventListener('submit', async function (
             btnText.innerHTML = "Sign In";
             return;
         }
-        localStorage.setItem("userInfo", JSON.stringify(userInfo.user));
+        // Optionally, store minimal info (not sensitive) in JS-accessible cookie if needed, but NOT tokens
+        // show success and redirect
         showAlert("Login successful! Redirecting...", "success");
         setTimeout(() => {
             window.location.href = "index.html";
@@ -836,7 +838,6 @@ document.getElementById('google-login-btn').addEventListener('click', function()
 });
 
 function handleGoogleCredentialResponse(response) {
-    // response.credential is the Google ID token
     if (!response.credential) {
         showAlert('Google login failed. No credential.', 'error');
         return;
@@ -846,12 +847,12 @@ function handleGoogleCredentialResponse(response) {
     fetch(GOOGLE_LAMBDA_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id_token: response.credential })
+        body: JSON.stringify({ id_token: response.credential }),
+        credentials: 'include'
     })
     .then(res => res.json())
     .then(data => {
-        if (data.user) {
-            localStorage.setItem("userInfo", JSON.stringify(data.user));
+        if (data && data.success) { // Assume your lambda responds with { success: true }
             showAlert("Google login successful! Redirecting...", "success");
             setTimeout(() => {
                 window.location.href = "index.html";
