@@ -737,7 +737,7 @@ document.getElementById('loginForm').addEventListener('submit', async function (
             // On success, the server has set the HttpOnly cookie. We don't handle tokens here.
             showAlert("Login successful! Redirecting...", "success");
             setTimeout(() => {
-                window.location.href = "index.html"; // Redirect to your main/dashboard page
+                window.location.href = ""; // Redirect to your main/dashboard page
             }, 1000);
         }
     } catch (err) {
