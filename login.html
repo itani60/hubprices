@@ -702,6 +702,11 @@ document.getElementById('passwordToggle').addEventListener('click', function () 
     }
 });
 
+// --- API Configuration ---
+// UPDATED: Central API URL for all requests
+const AUTH_API_URL = "https://api.comparehubprices.site";
+
+
 // Email/password login
 document.getElementById('loginForm').addEventListener('submit', async function (e) {
     e.preventDefault();
@@ -718,26 +723,25 @@ document.getElementById('loginForm').addEventListener('submit', async function (
     btnText.innerHTML = `<span class="spinner"></span> Logging In...`;
     
     try {
-        const resp = await fetch("https://api.comparehubprices.site/logins", {
+        // UPDATED: Uses the AUTH_API_URL variable
+        const resp = await fetch(`${AUTH_API_URL}/logins`, {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify({ email, password }),
-            // VERY IMPORTANT: This tells the browser to send/receive cookies for cross-origin requests.
             credentials: "include" 
         });
 
         const data = await resp.json();
 
         if (!resp.ok) {
-            // If the response is not OK, show the error from the server.
             showAlert(data?.error || "Login failed. Please check your credentials.", "error");
             btn.disabled = false;
             btnText.innerHTML = "Sign In";
         } else {
-            // On success, the server has set the HttpOnly cookie. We don't handle tokens here.
             showAlert("Login successful! Redirecting...", "success");
+            // FIXED: Redirects to index.html
             setTimeout(() => {
-                window.location.href = ""; // Redirect to your main/dashboard page
+                window.location.href = "index.html"; 
             }, 1000);
         }
     } catch (err) {
@@ -758,7 +762,7 @@ document.getElementById('backToHomeBtn').addEventListener('click', function() {
     window.location.href = "index.html";
 });
 
-// Forgot Password Modal logic (no changes needed here)
+// Forgot Password Modal logic
 function forgotPassword() {
     document.getElementById('forgotPasswordModal').classList.add('active');
     document.getElementById('resetEmail').value = '';
@@ -775,7 +779,8 @@ document.getElementById('submitResetBtn').addEventListener('click', async functi
     this.disabled = true;
     document.getElementById('submitResetText').innerHTML = `<span class="spinner"></span>`;
     try {
-        const resp = await fetch("https://w1yg1wc8cf.execute-api.af-south-1.amazonaws.com/prod/forgot-password", {
+        // UPDATED: Uses the AUTH_API_URL variable
+        const resp = await fetch(`${AUTH_API_URL}/forgot-password`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ email: resetEmail })
@@ -803,7 +808,8 @@ function showModalAlert(message) {
 
 // --- GOOGLE LOGIN INTEGRATION ---
 const GOOGLE_CLIENT_ID = "982307721628-lp2riufu960o1u658o6hmbuk4b03vhak.apps.googleusercontent.com";
-const GOOGLE_LAMBDA_URL = "https://w1yg1wc8cf.execute-api.af-south-1.amazonaws.com/prod/google-login";
+// UPDATED: GOOGLE_LAMBDA_URL now uses the AUTH_API_URL variable
+const GOOGLE_LAMBDA_URL = `${AUTH_API_URL}/google-login`;
 
 let googleInitialized = false;
 
@@ -832,18 +838,17 @@ async function handleGoogleCredentialResponse(response) {
     googleBtn.innerHTML = `<span class="spinner"></span> Signing in...`;
 
     try {
+        // This now uses the correct URL
         const res = await fetch(GOOGLE_LAMBDA_URL, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ id_token: response.credential }),
-            // IMPORTANT: Also include credentials for Google login
             credentials: "include"
         });
 
         const data = await res.json();
         
         if (res.ok) {
-            // NO MORE localStorage.setItem. The server sets the cookie.
             showAlert("Google login successful! Redirecting...", "success");
             setTimeout(() => {
                 window.location.href = "index.html";
