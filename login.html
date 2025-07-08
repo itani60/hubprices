@@ -718,7 +718,7 @@ document.getElementById('loginForm').addEventListener('submit', async function (
     btnText.innerHTML = `<span class="spinner"></span> Logging In...`;
     
     try {
-        const resp = await fetch("https://w1yg1wc8cf.execute-api.af-south-1.amazonaws.com/prod/logins", {
+        const resp = await fetch("https://api.comparehubprices.site/logins", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify({ email, password }),
