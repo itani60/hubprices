@@ -319,7 +319,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     window.addEventListener('resize', setBodyPadding);
 
     const API_URL = 'https://xf9zlapr5e.execute-api.af-south-1.amazonaws.com/deals';
-    // CHANGED: The AUTH_API_URL now points to your proxy path.
+    // This now points to your proxy path
     const AUTH_API_URL = "/api";
 
 
@@ -356,13 +356,14 @@ document.addEventListener('DOMContentLoaded', async function() {
 
 
     // ---------- SIDEBAR LOGIN (REWRITTEN FOR PROXY) ----------
-    
-    // This is the new main function to check the user's login status via the proxy.
+
+    // This is the main function to check the user's login status via the proxy.
     async function handleUserSession() {
         try {
+            // *** THIS IS THE KEY CHANGE ***
+            // The method is now GET to avoid the 405 error from the GoDaddy proxy.
             const resp = await fetch(`${AUTH_API_URL}/userinfo`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
+                method: "GET",
                 credentials: "include"
             });
 
@@ -387,6 +388,8 @@ document.addEventListener('DOMContentLoaded', async function() {
         if(sidebarLogin) sidebarLogin.innerHTML = 'Signing out...';
 
         try {
+            // Note: The logout endpoint can remain a POST as it's less likely to be blocked.
+            // If it also causes a 405 error, change it to GET as well.
             await fetch(`${AUTH_API_URL}/logout`, {
                 method: "POST",
                 credentials: "include"
@@ -816,7 +819,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         });
     });
 
-    // MODIFIED: This is now the main starting point for the page logic.
+    // This is the main starting point for the page logic.
     await handleUserSession();
 
     document.addEventListener('click', function(e) {
