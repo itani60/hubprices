@@ -306,7 +306,7 @@
     </footer>
 
 <script>
- document.addEventListener('DOMContentLoaded', async function() {
+document.addEventListener('DOMContentLoaded', async function() {
     // Dynamic body padding for fixed header
     function setBodyPadding() {
         const header = document.querySelector('.header');
@@ -319,21 +319,18 @@
     window.addEventListener('resize', setBodyPadding);
 
     const API_URL = 'https://xf9zlapr5e.execute-api.af-south-1.amazonaws.com/deals';
-    // ADDED: Base URL for our authentication API
-    const AUTH_API_URL = "https://w1yg1wc8cf.execute-api.af-south-1.amazonaws.com/prod";
+    // CHANGED: The AUTH_API_URL now points to your proxy path.
+    const AUTH_API_URL = "/api";
 
 
-    // ---------- USER INFO HELPERS (No changes needed here) ----------
+    // ---------- USER INFO HELPERS (Unchanged) ----------
     function getAttribute(userInfo, attrName) {
-        // Cognito user: Attributes/UserAttributes array
         const attrs = userInfo.Attributes || userInfo.UserAttributes || [];
         if (Array.isArray(attrs)) {
             const found = attrs.find(attr => attr.Name === attrName);
             if (found) return found.Value;
         }
-        // Google user: direct property
         if (userInfo[attrName]) return userInfo[attrName];
-        // Support your custom Google shape
         if (attrName === 'picture' && userInfo.avatar) return userInfo.avatar;
         if (attrName === 'picture' && userInfo.picture) return userInfo.picture;
         return '';
@@ -347,7 +344,7 @@
     }
 
     function getAvatarInitials(userInfo) {
-        if (userInfo.avatar || userInfo.picture) return ""; // Show avatar photo if available
+        if (userInfo.avatar || userInfo.picture) return "";
         const displayName = getDisplayName(userInfo);
         if (displayName) {
             const parts = displayName.split(' ');
@@ -357,32 +354,31 @@
         return 'U';
     }
 
-    // REMOVED: The old fetchUserInfoFromAPI function is no longer needed.
 
-    // ---------- SIDEBAR LOGIN ----------
-
-    // ADDED: New function to check the user's session by calling the /userinfo endpoint.
+    // ---------- SIDEBAR LOGIN (REWRITTEN FOR PROXY) ----------
+    
+    // This is the new main function to check the user's login status via the proxy.
     async function handleUserSession() {
         try {
             const resp = await fetch(`${AUTH_API_URL}/userinfo`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                credentials: "include" // This sends the secure cookie to the server
+                credentials: "include"
             });
 
             if (resp.ok) {
                 const data = await resp.json();
-                renderLoggedInView(data.user); // User is logged in
+                renderLoggedInView(data.user);
             } else {
-                renderLoggedOutView(); // User is not logged in
+                renderLoggedOutView();
             }
         } catch (error) {
             console.error("Could not fetch user session:", error);
-            renderLoggedOutView(); // Assume logged out on network error
+            renderLoggedOutView();
         }
     }
     
-    // ADDED: New function to handle the logout process.
+    // New function to handle logout via the proxy.
     async function handleLogout(event) {
         event.preventDefault();
         event.stopPropagation();
@@ -398,12 +394,11 @@
         } catch (error) {
             console.error("Logout failed:", error);
         } finally {
-            // Always redirect to refresh the page state
             window.location.href = "index.html";
         }
     }
 
-    // MODIFIED: This function now ONLY renders the logged-out state.
+    // This function now only renders the logged-out state.
     function renderLoggedOutView() {
         const sidebarLogin = document.getElementById('sidebarLogin');
         if (!sidebarLogin) return;
@@ -414,7 +409,7 @@
         `;
     }
 
-    // MODIFIED: This function now ONLY renders the logged-in state.
+    // This function now only renders the logged-in state.
     function renderLoggedInView(userInfo) {
         const sidebarLogin = document.getElementById('sidebarLogin');
         if (!sidebarLogin) return;
@@ -443,14 +438,12 @@
             window.location.href = "profile.html";
         });
         
-        // MODIFIED: Sign out button now calls the new handleLogout function.
         const signOutEl = sidebarLogin.querySelector('.sign-out');
         if (signOutEl) signOutEl.addEventListener('click', handleLogout);
     }
     
-    //
+
     // --- ALL OTHER FUNCTIONS BELOW ARE UNCHANGED ---
-    //
 
     // ---------- HERO CAROUSEL ----------
     const heroCarousel = document.querySelector('.hero-carousel');
@@ -546,14 +539,12 @@
     }
 
     function processDealsData(data) {
-        // Takealot
         if (data.takealot && Array.isArray(data.takealot)) {
             const takealotSlides = createSlidesFromProducts(data.takealot, 5);
             initializeProductCarousel('takealot', takealotSlides);
         } else if (data.takealot && data.takealot.slides) {
             initializeProductCarousel('takealot', data.takealot.slides);
         }
-        // Amazon
         if (data.amazon && Array.isArray(data.amazon)) {
             const amazonSlides = createSlidesFromProducts(data.amazon, 5);
             initializeProductCarousel('amazon', amazonSlides);
@@ -825,7 +816,7 @@
         });
     });
 
-    // MODIFIED: This is the main starting point now.
+    // MODIFIED: This is now the main starting point for the page logic.
     await handleUserSession();
 
     document.addEventListener('click', function(e) {
@@ -854,6 +845,5 @@
     fetchDealsData();
 });
 </script>
-
 </body>
 </html>
