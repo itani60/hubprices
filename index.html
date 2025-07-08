@@ -391,7 +391,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             // Note: The logout endpoint can remain a POST as it's less likely to be blocked.
             // If it also causes a 405 error, change it to GET as well.
             await fetch(`${AUTH_API_URL}/logout`, {
-                method: "POST",
+                method: "GET",
                 credentials: "include"
             });
         } catch (error) {
